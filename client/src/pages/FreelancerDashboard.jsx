@@ -327,7 +327,7 @@ const FreelancerDashboard = () => {
         const SOCKET_URL = import.meta.env.VITE_API_URL || 
           (import.meta.env.MODE === 'development' ? 'http://localhost:5000' : 'https://freelance-marketplace-dk90.onrender.com');
         const socket = io(SOCKET_URL, {
-          secure: true
+          transports: ['websocket', 'polling']
         });
         socket.emit('send_message', response.data);
         setTimeout(() => socket.disconnect(), 1000);

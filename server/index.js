@@ -17,7 +17,7 @@ const server = http.createServer(app);
 // Socket.io setup for real-time communication
 const io = new Server(server, {
   cors: {
-    origin: process.env.CLIENT_URL || 'http://localhost:5173',
+    origin: '*',
     methods: ['GET', 'POST'],
   },
 });

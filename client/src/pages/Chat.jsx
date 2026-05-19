@@ -17,13 +17,26 @@ const Chat = () => {
   
   const socketRef = useRef(null);
   const chatEndRef = useRef(null);
-
   useEffect(() => {
-    // Connect to Socket.io server
     const SOCKET_URL = import.meta.env.VITE_API_URL || 
       (import.meta.env.MODE === 'development' ? 'http://localhost:5000' : 'https://freelance-marketplace-dk90.onrender.com');
+
     socketRef.current = io(SOCKET_URL, {
-      secure: true
+      transports: ['websocket', 'polling'],
+      reconnectionAttempts: 5,
+      reconnectionDelay: 2000,
+    });
+
+    socketRef.current.on('connect', () => {
+      console.log('Socket connected successfully with ID:', socketRef.current.id);
+    });
+
+    socketRef.current.on('connect_error', (error) => {
+      console.error('Socket connection error occurred:', error);
+    });
+
+    socketRef.current.on('disconnect', (reason) => {
+      console.warn('Socket disconnected. Reason:', reason);
     });
 
     // Fetch contacts and handle auto-selecting target user from query param
