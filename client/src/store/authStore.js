@@ -2,8 +2,11 @@ import { create } from 'zustand';
 import axios from 'axios';
 
 // Create a configured axios instance
+const API_URL = import.meta.env.VITE_API_URL || 
+  (import.meta.env.MODE === 'development' ? 'http://localhost:5000' : 'https://freelance-marketplace-dk90.onrender.com');
+
 export const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api` : 'http://localhost:5000/api',
+  baseURL: `${API_URL}/api`,
 });
 
 // Add a request interceptor to include the auth token

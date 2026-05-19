@@ -20,7 +20,8 @@ const Chat = () => {
 
   useEffect(() => {
     // Connect to Socket.io server
-    const SOCKET_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+    const SOCKET_URL = import.meta.env.VITE_API_URL || 
+      (import.meta.env.MODE === 'development' ? 'http://localhost:5000' : 'https://freelance-marketplace-dk90.onrender.com');
     socketRef.current = io(SOCKET_URL, {
       secure: true
     });

@@ -308,7 +308,8 @@ const FreelancerDashboard = () => {
       
       // 2. Emit via Socket.io so recipient gets it live
       try {
-        const SOCKET_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+        const SOCKET_URL = import.meta.env.VITE_API_URL || 
+          (import.meta.env.MODE === 'development' ? 'http://localhost:5000' : 'https://freelance-marketplace-dk90.onrender.com');
         const socket = io(SOCKET_URL, {
           secure: true
         });
