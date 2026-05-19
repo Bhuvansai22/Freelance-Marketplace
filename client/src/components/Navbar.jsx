@@ -37,7 +37,7 @@ const Navbar = () => {
               ) : (
                 <>
                   <Link to="/freelancer-dashboard" className="text-slate-600 dark:text-slate-300 hover:text-primary px-3 py-2 rounded-md text-sm font-medium">Dashboard</Link>
-                  <Link to="/browse-projects" className="text-slate-600 dark:text-slate-300 hover:text-primary px-3 py-2 rounded-md text-sm font-medium flex items-center gap-1">
+                  <Link to="/freelancer-dashboard?tab=browse" className="text-slate-600 dark:text-slate-300 hover:text-primary px-3 py-2 rounded-md text-sm font-medium flex items-center gap-1">
                     <Briefcase className="w-4 h-4" /> Browse Projects
                   </Link>
                   <Link to="/skills-assessment" className="text-slate-600 dark:text-slate-300 hover:text-primary px-3 py-2 rounded-md text-sm font-medium flex items-center gap-1">
@@ -91,7 +91,7 @@ const Navbar = () => {
           ) : (
             <>
               <Link to="/freelancer-dashboard" onClick={() => setIsOpen(false)} className="block px-3 py-2 rounded-md text-base font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800">Dashboard</Link>
-              <Link to="/browse-projects" onClick={() => setIsOpen(false)} className="block px-3 py-2 rounded-md text-base font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800">Browse Projects</Link>
+              <Link to="/freelancer-dashboard?tab=browse" onClick={() => setIsOpen(false)} className="block px-3 py-2 rounded-md text-base font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800">Browse Projects</Link>
               <Link to="/skills-assessment" onClick={() => setIsOpen(false)} className="block px-3 py-2 rounded-md text-base font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800">Assessments</Link>
               <Link to="/chat" onClick={() => setIsOpen(false)} className="block px-3 py-2 rounded-md text-base font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800">Chat</Link>
             </>

@@ -41,6 +41,13 @@ const ClientDashboard = () => {
     fetchMyProjects();
     fetchFreelancers();
     fetchProfile();
+
+    const interval = setInterval(() => {
+      fetchMyProjects();
+      fetchFreelancers();
+    }, 5000);
+
+    return () => clearInterval(interval);
   }, []);
 
   const fetchProfile = async () => {

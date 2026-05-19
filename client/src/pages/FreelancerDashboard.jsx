@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { io } from 'socket.io-client';
 import Navbar from '../components/Navbar';
 import useAuthStore, { api } from '../store/authStore';
@@ -72,8 +72,17 @@ const FreelancerDashboard = () => {
   const [isSubmittingRating, setIsSubmittingRating] = useState(false);
   const [ratingSuccess, setRatingSuccess] = useState(false);
 
+  const [searchParams] = useSearchParams();
+  const tabParam = searchParams.get('tab');
+
   // Profile & Tab navigation states
   const [activeTab, setActiveTab] = useState('browse'); // 'browse', 'profile', 'assessment'
+
+  useEffect(() => {
+    if (tabParam) {
+      setActiveTab(tabParam);
+    }
+  }, [tabParam]);
   const [profileData, setProfileData] = useState({
     name: '',
     email: '',
@@ -93,6 +102,13 @@ const FreelancerDashboard = () => {
     fetchProjects();
     fetchMyBids();
     fetchProfile();
+
+    const interval = setInterval(() => {
+      fetchProjects();
+      fetchMyBids();
+    }, 5000);
+
+    return () => clearInterval(interval);
   }, []);
 
   const fetchProfile = async () => {

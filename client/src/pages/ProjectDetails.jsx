@@ -16,7 +16,8 @@ import {
   Calendar, 
   Award,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  RotateCcw
 } from 'lucide-react';
 
 const ProjectDetails = () => {
@@ -35,10 +36,37 @@ const ProjectDetails = () => {
   const [deliveryTime, setDeliveryTime] = useState('');
   const [coverLetter, setCoverLetter] = useState('');
   const [isSubmittingBid, setIsSubmittingBid] = useState(false);
+  const [isRebidding, setIsRebidding] = useState(false);
 
   useEffect(() => {
     fetchProjectDetails();
+
+    const interval = setInterval(() => {
+      refreshProjectData();
+    }, 5000);
+
+    return () => clearInterval(interval);
   }, [id]);
+
+  const refreshProjectData = async () => {
+    try {
+      const response = await api.get(`/projects/${id}`);
+      setProject(response.data);
+      
+      if (user?.role === 'client' || user?.role === 'admin') {
+        const bidsResponse = await api.get(`/bids/project/${id}`);
+        setBids(bidsResponse.data);
+      } else if (user?.role === 'freelancer') {
+        const bidsResponse = await api.get('/bids/mybids');
+        const foundBid = bidsResponse.data.find(b => b.project?._id === id || b.project === id);
+        if (foundBid) {
+          setMyBid(foundBid);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to auto-refresh project details', error);
+    }
+  };
 
   const fetchProjectDetails = async () => {
     try {
@@ -118,6 +146,8 @@ const ProjectDetails = () => {
       setBidAmount('');
       setDeliveryTime('');
       setCoverLetter('');
+      setIsRebidding(false);
+      fetchFreelancerBids();
       fetchProjectDetails();
     } catch (error) {
       alert(error.response?.data?.message || 'Failed to place bid');
@@ -451,7 +481,7 @@ const ProjectDetails = () => {
                   )}
 
                   {/* Case 2: Project is Open & Freelancer Has Already Bid */}
-                  {project.freelancerAssigned?._id !== user?._id && myBid && (
+                  {project.freelancerAssigned?._id !== user?._id && myBid && !isRebidding && (
                     <div className="space-y-4">
                       <div className={`p-4 rounded-xl border text-xs font-semibold text-center ${
                         myBid.status === 'accepted' ? 'bg-emerald-50 border-emerald-250 text-emerald-800' :
@@ -475,11 +505,25 @@ const ProjectDetails = () => {
                           <p className="line-clamp-4">{myBid.coverLetter}</p>
                         </div>
                       </div>
+
+                      {myBid.status === 'rejected' && project.status === 'open' && (
+                        <button
+                          onClick={() => {
+                            setBidAmount(myBid.amount);
+                            setDeliveryTime(myBid.deliveryTime);
+                            setCoverLetter(myBid.coverLetter);
+                            setIsRebidding(true);
+                          }}
+                          className="w-full px-4 py-2.5 bg-primary hover:bg-primary-dark text-white rounded-xl font-bold text-sm transition flex items-center justify-center gap-2 shadow-md"
+                        >
+                          <RotateCcw className="w-4 h-4" /> Place a New Bid / Rebid
+                        </button>
+                      )}
                     </div>
                   )}
 
-                  {/* Case 3: Project is Open & Freelancer Has NOT Bid Yet */}
-                  {project.freelancerAssigned?._id !== user?._id && !myBid && project.status === 'open' && (
+                  {/* Case 3: Project is Open & Freelancer Has NOT Bid Yet OR is Rebidding */}
+                  {project.freelancerAssigned?._id !== user?._id && (!myBid || isRebidding) && project.status === 'open' && (
                     <form onSubmit={handlePlaceBid} className="space-y-4">
                       <div className="grid grid-cols-2 gap-3">
                         <div>
@@ -518,13 +562,24 @@ const ProjectDetails = () => {
                         />
                       </div>
 
-                      <button
-                        type="submit"
-                        disabled={isSubmittingBid}
-                        className="w-full px-5 py-2.5 bg-primary hover:bg-primary-dark text-white rounded-xl font-bold text-sm shadow-md transition"
-                      >
-                        {isSubmittingBid ? 'Submitting Application...' : 'Place Proposal Bid'}
-                      </button>
+                      <div className="flex gap-2">
+                        {isRebidding && (
+                          <button
+                            type="button"
+                            onClick={() => setIsRebidding(false)}
+                            className="flex-1 px-4 py-2.5 bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl font-bold text-xs transition"
+                          >
+                            Cancel
+                          </button>
+                        )}
+                        <button
+                          type="submit"
+                          disabled={isSubmittingBid}
+                          className="flex-1 px-4 py-2.5 bg-primary hover:bg-primary-dark text-white disabled:bg-slate-300 disabled:dark:bg-slate-800 rounded-xl font-bold text-xs transition flex items-center justify-center gap-2 shadow-md"
+                        >
+                          {isSubmittingBid ? 'Submitting...' : isRebidding ? 'Update Proposal' : 'Submit Proposal'}
+                        </button>
+                      </div>
                     </form>
                   )}
 

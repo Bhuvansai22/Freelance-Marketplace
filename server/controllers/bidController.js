@@ -21,6 +21,15 @@ exports.placeBid = async (req, res) => {
     // Check if freelancer already bided
     const alreadyBid = await Bid.findOne({ project: projectId, freelancer: req.user.id });
     if (alreadyBid) {
+      if (alreadyBid.status === 'rejected') {
+        // If previous bid was rejected, allow rebidding by updating it
+        alreadyBid.amount = amount;
+        alreadyBid.deliveryTime = deliveryTime;
+        alreadyBid.coverLetter = coverLetter;
+        alreadyBid.status = 'pending';
+        await alreadyBid.save();
+        return res.status(200).json(alreadyBid);
+      }
       return res.status(400).json({ message: 'You have already placed a bid on this project' });
     }
 
