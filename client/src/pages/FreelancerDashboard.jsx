@@ -350,10 +350,19 @@ const FreelancerDashboard = () => {
       
       // 2. Emit via Socket.io so recipient gets it live
       try {
-        const SOCKET_URL = import.meta.env.VITE_API_URL || 
+        let SOCKET_URL = import.meta.env.VITE_API_URL || 
           (import.meta.env.MODE === 'development' ? 'http://localhost:5000' : 'https://freelance-marketplace-dk90.onrender.com');
+
+        // Clean up trailing slash and /api suffix so Socket.io connects to the root domain
+        if (SOCKET_URL.endsWith('/')) {
+          SOCKET_URL = SOCKET_URL.slice(0, -1);
+        }
+        if (SOCKET_URL.endsWith('/api')) {
+          SOCKET_URL = SOCKET_URL.slice(0, -4);
+        }
+
         const socket = io(SOCKET_URL, {
-          transports: ['websocket', 'polling']
+          transports: ['polling', 'websocket']
         });
         socket.emit('send_message', response.data);
         setTimeout(() => socket.disconnect(), 1000);

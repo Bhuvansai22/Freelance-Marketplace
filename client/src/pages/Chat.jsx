@@ -18,11 +18,19 @@ const Chat = () => {
   const socketRef = useRef(null);
   const chatEndRef = useRef(null);
   useEffect(() => {
-    const SOCKET_URL = import.meta.env.VITE_API_URL || 
+    let SOCKET_URL = import.meta.env.VITE_API_URL || 
       (import.meta.env.MODE === 'development' ? 'http://localhost:5000' : 'https://freelance-marketplace-dk90.onrender.com');
 
+    // Clean up trailing slash and /api suffix so Socket.io connects to the root domain
+    if (SOCKET_URL.endsWith('/')) {
+      SOCKET_URL = SOCKET_URL.slice(0, -1);
+    }
+    if (SOCKET_URL.endsWith('/api')) {
+      SOCKET_URL = SOCKET_URL.slice(0, -4);
+    }
+
     socketRef.current = io(SOCKET_URL, {
-      transports: ['websocket', 'polling'],
+      transports: ['polling', 'websocket'],
       reconnectionAttempts: 5,
       reconnectionDelay: 2000,
     });

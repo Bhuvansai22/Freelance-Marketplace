@@ -17,8 +17,12 @@ const server = http.createServer(app);
 // Socket.io setup for real-time communication
 const io = new Server(server, {
   cors: {
-    origin: '*',
+    origin: (origin, callback) => {
+      // Dynamically echo the origin to allow any client connection (including custom subdomains / Vercel previews)
+      callback(null, true);
+    },
     methods: ['GET', 'POST'],
+    credentials: true,
   },
 });
 
