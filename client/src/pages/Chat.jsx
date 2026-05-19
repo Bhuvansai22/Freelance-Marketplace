@@ -43,7 +43,7 @@ const Chat = () => {
     const initChat = async () => {
       setIsContactsLoading(true);
       try {
-        const response = await api.get('/messages/contacts/list');
+        const response = await api.get(`/messages/contacts/list?t=${Date.now()}`);
         const currentContacts = response.data || [];
         setContacts(currentContacts);
 
@@ -93,11 +93,21 @@ const Chat = () => {
   useEffect(() => {
     if (!socketRef.current || !user || !selectedContact) return;
 
-    // Join room for currently selected contact
-    socketRef.current.emit('join_room', {
-      userId: user._id,
-      contactId: selectedContact._id
-    });
+    const joinCurrentRoom = () => {
+      console.log('Socket connect/reconnect event: Emitting join_room for contact:', selectedContact._id);
+      socketRef.current.emit('join_room', {
+        userId: user._id,
+        contactId: selectedContact._id
+      });
+    };
+
+    // Join room immediately if socket is already connected
+    if (socketRef.current.connected) {
+      joinCurrentRoom();
+    }
+
+    // Join room on connect or reconnect
+    socketRef.current.on('connect', joinCurrentRoom);
 
     const handleIncomingMessage = (message) => {
       // Append if the message is from currently selected contact
@@ -115,6 +125,7 @@ const Chat = () => {
 
     return () => {
       if (socketRef.current) {
+        socketRef.current.off('connect', joinCurrentRoom);
         socketRef.current.off('receive_message', handleIncomingMessage);
       }
     };
@@ -130,7 +141,7 @@ const Chat = () => {
 
     const pollChatHistory = async () => {
       try {
-        const response = await api.get(`/messages/${selectedContact._id}`);
+        const response = await api.get(`/messages/${selectedContact._id}?t=${Date.now()}`);
         setMessages((prev) => {
           if (JSON.stringify(prev) !== JSON.stringify(response.data)) {
             return response.data;
@@ -151,7 +162,7 @@ const Chat = () => {
     setSelectedContact(contact);
     setIsMessagesLoading(true);
     try {
-      const response = await api.get(`/messages/${contact._id}`);
+      const response = await api.get(`/messages/${contact._id}?t=${Date.now()}`);
       setMessages(response.data);
     } catch (error) {
       console.error('Failed to load chat history', error);

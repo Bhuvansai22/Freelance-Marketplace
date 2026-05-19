@@ -111,6 +111,32 @@ const FreelancerDashboard = () => {
     return () => clearInterval(interval);
   }, []);
 
+  // Poll chat history inside progress modal when active
+  useEffect(() => {
+    if (!activeProgressProject) return;
+
+    const clientId = activeProgressProject.client?._id || activeProgressProject.client;
+    if (!clientId) return;
+
+    const pollChatHistory = async () => {
+      try {
+        const chatResponse = await api.get(`/messages/${clientId}?t=${Date.now()}`);
+        setChatHistory((prev) => {
+          if (JSON.stringify(prev) !== JSON.stringify(chatResponse.data)) {
+            return chatResponse.data || [];
+          }
+          return prev;
+        });
+      } catch (err) {
+        console.error('Failed to poll chat history for progress modal', err);
+      }
+    };
+
+    const interval = setInterval(pollChatHistory, 4000);
+
+    return () => clearInterval(interval);
+  }, [activeProgressProject]);
+
   const fetchProfile = async () => {
     try {
       const response = await api.get('/auth/me');
@@ -246,7 +272,7 @@ const FreelancerDashboard = () => {
     if (clientId) {
       setIsChatLoading(true);
       try {
-        const chatResponse = await api.get(`/messages/${clientId}`);
+        const chatResponse = await api.get(`/messages/${clientId}?t=${Date.now()}`);
         setChatHistory(chatResponse.data || []);
       } catch (err) {
         console.error('Failed to fetch chat history for progress modal', err);
