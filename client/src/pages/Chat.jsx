@@ -1,0 +1,276 @@
+import { useState, useEffect, useRef } from 'react';
+import Navbar from '../components/Navbar';
+import useAuthStore, { api } from '../store/authStore';
+import { io } from 'socket.io-client';
+import { motion } from 'framer-motion';
+import { Send, User, MessageSquare, Loader2 } from 'lucide-react';
+
+const Chat = () => {
+  const { user } = useAuthStore();
+  const [contacts, setContacts] = useState([]);
+  const [selectedContact, setSelectedContact] = useState(null);
+  const [messages, setMessages] = useState([]);
+  const [typedMessage, setTypedMessage] = useState('');
+  
+  const [isContactsLoading, setIsContactsLoading] = useState(true);
+  const [isMessagesLoading, setIsMessagesLoading] = useState(false);
+  
+  const socketRef = useRef(null);
+  const chatEndRef = useRef(null);
+
+  useEffect(() => {
+    // Connect to Socket.io server
+    const SOCKET_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+    socketRef.current = io(SOCKET_URL, {
+      secure: true
+    });
+
+    // Fetch contacts and handle auto-selecting target user from query param
+    const initChat = async () => {
+      setIsContactsLoading(true);
+      try {
+        const response = await api.get('/messages/contacts/list');
+        const currentContacts = response.data || [];
+        setContacts(currentContacts);
+
+        const queryParams = new URLSearchParams(window.location.search);
+        const queryUserId = queryParams.get('userId');
+
+        if (queryUserId) {
+          // Check if contact already exists in the list
+          const matchedContact = currentContacts.find(c => c._id === queryUserId);
+          if (matchedContact) {
+            handleSelectContact(matchedContact);
+          } else {
+            // Contact is new (no chat history yet). Fetch user details from our new API.
+            try {
+              const userRes = await api.get(`/auth/users/${queryUserId}`);
+              const tempContact = {
+                _id: userRes.data._id,
+                name: userRes.data.name,
+                role: userRes.data.role,
+                title: userRes.data.title,
+                email: userRes.data.email
+              };
+              // Prepended to contacts sidebar list
+              setContacts(prev => [tempContact, ...prev]);
+              handleSelectContact(tempContact);
+            } catch (err) {
+              console.error('Failed to load query user profile details', err);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load contacts list', error);
+      } finally {
+        setIsContactsLoading(false);
+      }
+    };
+
+    initChat();
+
+    return () => {
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!socketRef.current || !user || !selectedContact) return;
+
+    // Join room for currently selected contact
+    socketRef.current.emit('join_room', {
+      userId: user._id,
+      contactId: selectedContact._id
+    });
+
+    const handleIncomingMessage = (message) => {
+      // Append if the message is from currently selected contact
+      const senderId = message.sender?._id || message.sender;
+      if (selectedContact && senderId === selectedContact._id) {
+        setMessages((prev) => {
+          if (prev.some((m) => m._id === message._id)) return prev;
+          return [...prev, message];
+        });
+      }
+    };
+
+    // Listen for incoming messages
+    socketRef.current.on('receive_message', handleIncomingMessage);
+
+    return () => {
+      if (socketRef.current) {
+        socketRef.current.off('receive_message', handleIncomingMessage);
+      }
+    };
+  }, [user, selectedContact]);
+
+  useEffect(() => {
+    // Scroll to bottom when messages update
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  const handleSelectContact = async (contact) => {
+    setSelectedContact(contact);
+    setIsMessagesLoading(true);
+    try {
+      const response = await api.get(`/messages/${contact._id}`);
+      setMessages(response.data);
+    } catch (error) {
+      console.error('Failed to load chat history', error);
+    } finally {
+      setIsMessagesLoading(false);
+    }
+  };
+
+  const handleSendMessage = async (e) => {
+    e.preventDefault();
+    if (!typedMessage.trim() || !selectedContact) return;
+
+    const payload = {
+      receiver: selectedContact._id,
+      content: typedMessage,
+    };
+
+    try {
+      // 1. Save message to database
+      const response = await api.post('/messages', payload);
+      
+      // 2. Emit via socket
+      socketRef.current.emit('send_message', response.data);
+
+      // 3. Update UI state locally
+      setMessages((prev) => [...prev, response.data]);
+      setTypedMessage('');
+    } catch (error) {
+      console.error('Failed to send message', error);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-50 dark:bg-dark-bg flex flex-col">
+      <Navbar />
+
+      <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 flex gap-6 overflow-hidden max-h-[85vh]">
+        {/* Contacts Sidebar */}
+        <div className="w-1/3 bg-white dark:bg-dark-surface rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col overflow-hidden">
+          <div className="p-5 border-b border-slate-100 dark:border-slate-800">
+            <h2 className="font-bold text-lg text-slate-900 dark:text-white">Messages</h2>
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-3 space-y-2">
+            {isContactsLoading ? (
+              <div className="flex justify-center items-center py-8">
+                <Loader2 className="animate-spin text-primary w-6 h-6" />
+              </div>
+            ) : contacts.length === 0 ? (
+              <div className="text-center py-12 text-slate-400">
+                <MessageSquare className="w-10 h-10 mx-auto mb-2 text-slate-300" />
+                <p className="text-xs">No conversations yet.</p>
+              </div>
+            ) : (
+              contacts.map((contact) => (
+                <button
+                  key={contact._id}
+                  onClick={() => handleSelectContact(contact)}
+                  className={`w-full flex items-center gap-3 p-3 rounded-xl transition text-left ${
+                    selectedContact?._id === contact._id
+                      ? 'bg-primary/10 text-primary'
+                      : 'hover:bg-slate-50 dark:hover:bg-slate-800/40 text-slate-700 dark:text-slate-300'
+                  }`}
+                >
+                  <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center font-bold text-primary">
+                    {contact.name.charAt(0).toUpperCase()}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex justify-between items-baseline">
+                      <span className="font-semibold text-sm truncate">{contact.name}</span>
+                    </div>
+                    <p className="text-xs text-slate-400 truncate capitalize">{contact.role}</p>
+                  </div>
+                </button>
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* Message Window */}
+        <div className="flex-1 bg-white dark:bg-dark-surface rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col overflow-hidden">
+          {selectedContact ? (
+            <>
+              {/* Header */}
+              <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center gap-3 bg-slate-50/50 dark:bg-slate-900/10">
+                <div className="w-9 h-9 rounded-full bg-primary/20 flex items-center justify-center font-bold text-primary">
+                  {selectedContact.name.charAt(0).toUpperCase()}
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm text-slate-900 dark:text-white">{selectedContact.name}</h3>
+                  <span className="text-[10px] text-slate-400 capitalize">{selectedContact.role}</span>
+                </div>
+              </div>
+
+              {/* Chat Messages */}
+              <div className="flex-1 overflow-y-auto p-5 space-y-4">
+                {isMessagesLoading ? (
+                  <div className="flex justify-center items-center py-12">
+                    <Loader2 className="animate-spin text-primary w-6 h-6" />
+                  </div>
+                ) : (
+                  messages.map((msg) => {
+                    const isOwn = msg.sender._id === user._id || msg.sender === user._id;
+                    return (
+                      <div
+                        key={msg._id}
+                        className={`flex ${isOwn ? 'justify-end' : 'justify-start'}`}
+                      >
+                        <div
+                          className={`max-w-[70%] p-3.5 rounded-2xl text-sm ${
+                            isOwn
+                              ? 'bg-primary text-white rounded-tr-none'
+                              : 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 rounded-tl-none'
+                          }`}
+                        >
+                          <p className="leading-relaxed">{msg.content}</p>
+                          <span className={`text-[9px] block text-right mt-1 ${isOwn ? 'text-white/70' : 'text-slate-400'}`}>
+                            {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+                <div ref={chatEndRef} />
+              </div>
+
+              {/* Typed Message Input Form */}
+              <form onSubmit={handleSendMessage} className="p-4 border-t border-slate-100 dark:border-slate-800 flex gap-2">
+                <input
+                  type="text"
+                  placeholder="Type a message..."
+                  value={typedMessage}
+                  onChange={(e) => setTypedMessage(e.target.value)}
+                  className="flex-1 px-4 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-primary focus:border-transparent transition"
+                />
+                <button
+                  type="submit"
+                  className="p-2.5 bg-primary hover:bg-primary-dark text-white rounded-xl transition flex items-center justify-center"
+                >
+                  <Send className="w-5 h-5" />
+                </button>
+              </form>
+            </>
+          ) : (
+            <div className="flex-1 flex flex-col items-center justify-center text-slate-400 p-8">
+              <MessageSquare className="w-12 h-12 text-slate-300 mb-3" />
+              <h3 className="font-bold text-slate-700 dark:text-slate-300">Your Chatbox</h3>
+              <p className="text-xs mt-1">Select a contact from the list on the left to start talking.</p>
+            </div>
+          )}
+        </div>
+      </main>
+    </div>
+  );
+};
+
+export default Chat;

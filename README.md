@@ -1,6 +1,6 @@
 # Freelancer Marketplace with Bidding System
 
-A full-stack MERN-based freelance marketplace platform designed to empower freshers and skilled freelancers by providing free bidding, skill verification, real-time communication, video collaboration, milestone tracking, and secure online payments.
+A full-stack MERN-based freelance marketplace platform designed to empower freshers and skilled freelancers by providing free bidding, skill verification, real-time communication, milestone tracking, and secure online payments.
 
 ---
 
@@ -15,7 +15,7 @@ Unlike traditional freelance platforms that prioritize experienced freelancers, 
 ✅ Free bidding system  
 ✅ Fresher-first hiring ecosystem  
 ✅ Free skill verification assessments  
-✅ Real-time chat and video meetings  
+✅ Real-time chat messaging  
 ✅ AI-powered future enhancements  
 ✅ Milestone-based project workflow  
 
@@ -39,7 +39,6 @@ Unlike traditional freelance platforms that prioritize experienced freelancers, 
 - Track milestones
 - Release payments
 - Chat with freelancers
-- Schedule video meetings
 - Review and rate freelancers
 
 ---
@@ -50,7 +49,6 @@ Unlike traditional freelance platforms that prioritize experienced freelancers, 
 - Submit proposals
 - Manage profile and skills
 - Track project progress
-- Attend video meetings
 - Real-time communication
 - View earnings and reviews
 
@@ -118,18 +116,6 @@ Built using Socket.io:
 
 ---
 
-# 🎥 Video Calling System
-Integrated using WebRTC / Zoom API:
-
-## Features
-- One-to-one meetings
-- Project discussions
-- Interview scheduling
-- Screen sharing support
-- Meeting reminders
-
----
-
 # 💳 Payment System
 Integrated with Razorpay:
 - Secure online payments
@@ -183,7 +169,6 @@ Users can upload:
 - Email alerts
 - Bid updates
 - Payment notifications
-- Meeting reminders
 
 ---
 
@@ -242,10 +227,6 @@ Admin functionalities:
 - Chat messages
 - Sender and receiver data
 
-## Meetings
-- Video meeting schedules
-- Meeting status
-
 ## Assessments
 - Test topics
 - Scores
@@ -273,11 +254,7 @@ Admin functionalities:
 
 ## Real-Time Communication
 - Socket.io
-- WebRTC
 
 ## Payment Gateway
 - Razorpay
-
-## Video Calling
-- WebRTC / Zoom API
 
