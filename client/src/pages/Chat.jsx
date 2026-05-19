@@ -125,6 +125,28 @@ const Chat = () => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  useEffect(() => {
+    if (!selectedContact) return;
+
+    const pollChatHistory = async () => {
+      try {
+        const response = await api.get(`/messages/${selectedContact._id}`);
+        setMessages((prev) => {
+          if (JSON.stringify(prev) !== JSON.stringify(response.data)) {
+            return response.data;
+          }
+          return prev;
+        });
+      } catch (error) {
+        console.error('Failed to poll chat history', error);
+      }
+    };
+
+    const interval = setInterval(pollChatHistory, 4000);
+
+    return () => clearInterval(interval);
+  }, [selectedContact]);
+
   const handleSelectContact = async (contact) => {
     setSelectedContact(contact);
     setIsMessagesLoading(true);

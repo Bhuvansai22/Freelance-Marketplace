@@ -17,7 +17,8 @@ import {
   Award,
   CheckCircle2,
   AlertCircle,
-  RotateCcw
+  RotateCcw,
+  XCircle
 } from 'lucide-react';
 
 const ProjectDetails = () => {
@@ -43,7 +44,7 @@ const ProjectDetails = () => {
 
     const interval = setInterval(() => {
       refreshProjectData();
-    }, 5000);
+    }, 15000);
 
     return () => clearInterval(interval);
   }, [id]);
@@ -128,6 +129,23 @@ const ProjectDetails = () => {
       fetchProjectBids();
     } catch (error) {
       alert('Failed to reject bid');
+    }
+  };
+
+  const handleRejectFreelancer = async () => {
+    if (!window.confirm("Are you sure you want to reject this freelancer's assigned work and reopen this project for bids? This will set the freelancer's proposal status to 'rejected' and allow them to rebid.")) return;
+
+    try {
+      const response = await api.post(`/projects/${id}/reject`);
+      alert("Freelancer rejected and project reopened for bidding.");
+      setProject(response.data.project);
+      
+      // Fetch bids again so list updates
+      const bidsResponse = await api.get(`/bids/project/${id}`);
+      setBids(bidsResponse.data);
+    } catch (error) {
+      console.error(error);
+      alert(error.response?.data?.message || "Failed to reject freelancer.");
     }
   };
 
@@ -427,6 +445,14 @@ const ProjectDetails = () => {
                       >
                         <MessageSquare className="w-4 h-4" /> Message Freelancer
                       </Link>
+                      {project.status === 'in-progress' && (
+                        <button
+                          onClick={handleRejectFreelancer}
+                          className="w-full px-4 py-2.5 bg-red-500 hover:bg-red-650 text-white rounded-xl font-bold text-sm transition flex items-center justify-center gap-2 shadow-md"
+                        >
+                          <XCircle className="w-4 h-4" /> Reject & Reopen Project
+                        </button>
+                      )}
                     </div>
                   </div>
                 )}

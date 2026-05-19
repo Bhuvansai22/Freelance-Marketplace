@@ -106,7 +106,7 @@ const FreelancerDashboard = () => {
     const interval = setInterval(() => {
       fetchProjects();
       fetchMyBids();
-    }, 5000);
+    }, 15000);
 
     return () => clearInterval(interval);
   }, []);

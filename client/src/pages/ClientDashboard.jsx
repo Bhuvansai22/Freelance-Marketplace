@@ -45,7 +45,7 @@ const ClientDashboard = () => {
     const interval = setInterval(() => {
       fetchMyProjects();
       fetchFreelancers();
-    }, 5000);
+    }, 15000);
 
     return () => clearInterval(interval);
   }, []);

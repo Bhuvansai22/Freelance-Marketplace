@@ -10,6 +10,7 @@ const {
   updateProjectProgress,
   rateProjectFreelancer,
   rateProjectClient,
+  rejectProjectFreelancer,
 } = require('../controllers/projectController');
 const { protect, authorize } = require('../middleware/authMiddleware');
 
@@ -23,6 +24,7 @@ router.get('/myprojects', protect, authorize('client', 'admin'), getMyProjects);
 router.put('/:id/progress', protect, authorize('freelancer', 'admin'), updateProjectProgress);
 router.post('/:id/rate', protect, authorize('client', 'admin'), rateProjectFreelancer);
 router.post('/:id/rate-client', protect, authorize('freelancer', 'admin'), rateProjectClient);
+router.post('/:id/reject', protect, authorize('client', 'admin'), rejectProjectFreelancer);
 
 router
   .route('/:id')

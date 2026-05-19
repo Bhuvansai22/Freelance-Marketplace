@@ -307,3 +307,58 @@ exports.rateProjectClient = async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 };
+
+// @desc    Reject/Cancel the active freelancer and reopen project
+// @route   POST /api/projects/:id/reject
+// @access  Private/Client
+exports.rejectProjectFreelancer = async (req, res) => {
+  try {
+    const project = await Project.findById(req.params.id);
+
+    if (!project) {
+      return res.status(404).json({ message: 'Project not found' });
+    }
+
+    // Make sure user is the project client
+    if (project.client.toString() !== req.user.id && req.user.role !== 'admin') {
+      return res.status(401).json({ message: 'Not authorized to perform this action' });
+    }
+
+    if (!project.freelancerAssigned) {
+      return res.status(400).json({ message: 'No freelancer assigned to this project' });
+    }
+
+    const Bid = require('../models/Bid');
+    // Find the accepted bid for this freelancer on this project
+    const acceptedBid = await Bid.findOne({
+      project: project._id,
+      freelancer: project.freelancerAssigned,
+      status: 'accepted'
+    });
+
+    if (acceptedBid) {
+      acceptedBid.status = 'rejected';
+      await acceptedBid.save();
+    }
+
+    // Reopen the project and unassign freelancer
+    project.status = 'open';
+    project.freelancerAssigned = null;
+
+    // Reset milestones status to pending
+    if (project.milestones) {
+      project.milestones = project.milestones.map(m => {
+        const mObj = m.toObject();
+        mObj.status = 'pending';
+        return mObj;
+      });
+    }
+
+    await project.save();
+
+    res.json({ message: 'Project reassignment cancelled. Freelancer rejected and project reopened.', project });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
