@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import toast from 'react-hot-toast';
 import Navbar from '../components/Navbar';
 import { api } from '../store/authStore';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -15,7 +16,7 @@ const SkillsAssessment = () => {
   const [questions, setQuestions] = useState([]);
   const [currentIdx, setCurrentIdx] = useState(0);
   const [selectedAnswers, setSelectedAnswers] = useState({}); // { questionId: selectedIndex }
-  
+
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [result, setResult] = useState(null);
@@ -30,7 +31,7 @@ const SkillsAssessment = () => {
       const response = await api.get(`/assessments/${topicId}`);
       setQuestions(response.data);
     } catch (error) {
-      alert(error.response?.data?.message || 'Failed to fetch assessment questions.');
+      toast.error(error.response?.data?.message || 'Failed to fetch assessment questions.');
       setActiveTopic(null);
     } finally {
       setIsLoading(false);
@@ -57,7 +58,7 @@ const SkillsAssessment = () => {
       });
       setResult(response.data);
     } catch (error) {
-      alert('Failed to submit assessment.');
+      toast.error('Failed to submit assessment.');
     } finally {
       setIsSubmitting(false);
     }
@@ -78,7 +79,7 @@ const SkillsAssessment = () => {
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-dark-bg">
       <Navbar />
-      
+
       <main className="max-w-4xl mx-auto px-4 py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
@@ -153,7 +154,7 @@ const SkillsAssessment = () => {
 
                   {/* Progress Bar */}
                   <div className="w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-full mb-8">
-                    <div 
+                    <div
                       className="bg-primary h-2 rounded-full transition-all duration-300"
                       style={{ width: `${((currentIdx + 1) / questions.length) * 100}%` }}
                     />
@@ -171,11 +172,10 @@ const SkillsAssessment = () => {
                           <button
                             key={oIdx}
                             onClick={() => handleSelectOption(questions[currentIdx]._id, oIdx)}
-                            className={`w-full text-left p-4 rounded-xl border-2 transition-all font-medium text-sm flex items-center justify-between ${
-                              selectedAnswers[questions[currentIdx]._id] === oIdx
+                            className={`w-full text-left p-4 rounded-xl border-2 transition-all font-medium text-sm flex items-center justify-between ${selectedAnswers[questions[currentIdx]._id] === oIdx
                                 ? 'border-primary bg-primary/5 text-primary'
                                 : 'border-slate-100 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 text-slate-700 dark:text-slate-300'
-                            }`}
+                              }`}
                           >
                             <span>{opt}</span>
                             <span className="w-5 h-5 rounded-full border border-slate-300 flex items-center justify-center text-xs">
@@ -244,7 +244,7 @@ const SkillsAssessment = () => {
                   {result.passed ? 'Congratulations!' : 'Test Failed'}
                 </h3>
                 <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">
-                  {result.passed 
+                  {result.passed
                     ? `You passed the assessment with a score of ${result.score}%!`
                     : `You scored ${result.score}%, but you need at least 70% to pass.`
                   }

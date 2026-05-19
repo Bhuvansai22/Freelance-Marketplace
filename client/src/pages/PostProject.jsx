@@ -1,4 +1,5 @@
 import { useForm } from 'react-hook-form';
+import toast from 'react-hot-toast';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useNavigate } from 'react-router-dom';
@@ -14,8 +15,13 @@ const projectSchema = z.object({
   minBudget: z.number().min(1, 'Minimum budget must be positive'),
   maxBudget: z.number().min(1, 'Maximum budget must be positive'),
   skillsRequired: z.string().min(2, 'Please list at least one skill'),
-  deadline: z.string().refine(val => new Date(val) > new Date(), {
-    message: 'Deadline must be in the future',
+  deadline: z.string().refine((val) => {
+    const inputDate = new Date(val);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return inputDate >= today;
+  }, {
+    message: 'Deadline must be today or in the future',
   }),
 });
 
@@ -46,7 +52,7 @@ const PostProject = () => {
     setIsLoading(true);
     try {
       const skillsArray = data.skillsRequired.split(',').map(s => s.trim().toLowerCase());
-      
+
       const payload = {
         title: data.title,
         description: data.description,
@@ -60,10 +66,10 @@ const PostProject = () => {
       };
 
       await api.post('/projects', payload);
-      alert('Project posted successfully!');
+      toast.success('Project posted successfully!');
       navigate('/client-dashboard');
     } catch (error) {
-      alert(error.response?.data?.message || 'Failed to post project');
+      toast.error(error.response?.data?.message || 'Failed to post project');
     } finally {
       setIsLoading(false);
     }
@@ -164,7 +170,7 @@ const PostProject = () => {
 
               <div className="space-y-3">
                 {milestones.map((milestone, idx) => (
-                  <div key={idx} className="flex gap-3 items-center">
+                  <div key={idx} className="flex flex-col sm:flex-row gap-2 sm:gap-3 sm:items-center">
                     <input
                       type="text"
                       placeholder="Milestone Title (e.g. Figma Designs)"
@@ -172,22 +178,24 @@ const PostProject = () => {
                       onChange={(e) => handleMilestoneChange(idx, 'title', e.target.value)}
                       className="flex-1 px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-primary focus:border-transparent transition"
                     />
-                    <input
-                      type="number"
-                      placeholder="Amount (₹)"
-                      value={milestone.amount || ''}
-                      onChange={(e) => handleMilestoneChange(idx, 'amount', e.target.value)}
-                      className="w-24 px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-primary focus:border-transparent transition"
-                    />
-                    {milestones.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveMilestone(idx)}
-                        className="text-red-500 hover:text-red-600 p-2"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    )}
+                    <div className="flex gap-2 items-center">
+                      <input
+                        type="number"
+                        placeholder="Amount (₹)"
+                        value={milestone.amount || ''}
+                        onChange={(e) => handleMilestoneChange(idx, 'amount', e.target.value)}
+                        className="w-full sm:w-28 px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-primary focus:border-transparent transition"
+                      />
+                      {milestones.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveMilestone(idx)}
+                          className="text-red-500 hover:text-red-600 p-2 shrink-0"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>

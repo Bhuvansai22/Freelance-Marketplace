@@ -27,8 +27,27 @@ const io = new Server(server, {
 });
 
 // Middleware
-app.use(cors());
-app.use(express.json());
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:3000',
+  'https://freelance-marketplace-dk90.onrender.com',
+  process.env.CLIENT_URL,
+].filter(Boolean);
+
+app.use(cors({
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps, curl, or server-to-server)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+    // In development, allow any origin
+    if (process.env.NODE_ENV === 'development') return callback(null, true);
+    return callback(new Error(`CORS policy blocked the request from origin: ${origin}`));
+  },
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  credentials: true,
+}));
+app.use(express.json({ limit: '2mb' }));
+app.use(express.urlencoded({ extended: true, limit: '2mb' }));
 
 // Routes
 app.use('/api/auth', require('./routes/authRoutes'));
@@ -37,15 +56,29 @@ app.use('/api/bids', require('./routes/bidRoutes'));
 app.use('/api/assessments', require('./routes/assessmentRoutes'));
 app.use('/api/messages', require('./routes/messageRoutes'));
 app.use('/api/payments', require('./routes/paymentRoutes'));
+app.use('/api/ai', require('./routes/aiRoutes'));
+
+// Health Check Endpoint (for Render / uptime monitors)
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'ok', uptime: process.uptime(), timestamp: new Date().toISOString() });
+});
 
 // Basic Route
 app.get('/', (req, res) => {
-  res.send('Freelancer Marketplace API is running...');
+  res.send('Hirenova Marketplace API is running...');
 });
 
 // Socket.io connection
 io.on('connection', (socket) => {
   console.log(`User connected: ${socket.id}`);
+
+  // Register user for global notifications
+  socket.on('register_user', (userId) => {
+    if (userId) {
+      socket.join(userId.toString());
+      console.log(`Socket ${socket.id} registered for notifications: ${userId}`);
+    }
+  });
 
   // Join a private secure chat room between two users
   socket.on('join_room', (data) => {
@@ -69,6 +102,10 @@ io.on('connection', (socket) => {
       const roomName = [senderId.toString(), receiverId.toString()].sort().join('_');
       // Broadcast strictly to members inside this private room only
       io.to(roomName).emit('receive_message', messageData);
+      
+      // Global Notification to receiver
+      io.to(receiverId.toString()).emit('new_message_notification', messageData);
+      
       console.log(`Message from ${senderId} to ${receiverId} broadcast to room: ${roomName}`);
     }
   });

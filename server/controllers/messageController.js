@@ -12,11 +12,26 @@ exports.sendMessage = async (req, res) => {
       return res.status(400).json({ message: 'Content is required' });
     }
 
+    const aiService = require('../utils/aiService');
+    
+    let isSuspicious = false;
+    let suspiciousReason = '';
+    
+    try {
+      const scamCheck = await aiService.analyzeMessage(content);
+      isSuspicious = scamCheck.isSuspicious;
+      suspiciousReason = scamCheck.reason;
+    } catch (err) {
+      console.error('⚠️ Failed local message analysis check:', err.message);
+    }
+
     const message = await Message.create({
       sender: req.user.id,
       receiver,
       content,
       project,
+      isSuspicious,
+      suspiciousReason,
     });
 
     const populatedMessage = await message.populate('sender receiver', 'name email');

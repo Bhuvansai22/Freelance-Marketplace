@@ -1,37 +1,40 @@
 import { useState, useEffect } from 'react';
+import toast from 'react-hot-toast';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import useAuthStore, { api } from '../store/authStore';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Briefcase, 
-  IndianRupee, 
-  Clock, 
-  Users, 
-  Check, 
-  X, 
-  MessageSquare, 
-  Video, 
-  ArrowLeft, 
-  Calendar, 
+import {
+  Briefcase,
+  IndianRupee,
+  Clock,
+  Users,
+  Check,
+  X,
+  MessageSquare,
+  Video,
+  ArrowLeft,
+  Calendar,
   Award,
   CheckCircle2,
   AlertCircle,
   RotateCcw,
-  XCircle
+  XCircle,
+  Sparkles,
+  Bot
 } from 'lucide-react';
 
 const ProjectDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuthStore();
-  
+
   const [project, setProject] = useState(null);
   const [bids, setBids] = useState([]);
   const [myBid, setMyBid] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isBidsLoading, setIsBidsLoading] = useState(false);
-  
+
   // Freelancer bid submission state
   const [bidAmount, setBidAmount] = useState('');
   const [deliveryTime, setDeliveryTime] = useState('');
@@ -53,7 +56,7 @@ const ProjectDetails = () => {
     try {
       const response = await api.get(`/projects/${id}`);
       setProject(response.data);
-      
+
       if (user?.role === 'client' || user?.role === 'admin') {
         const bidsResponse = await api.get(`/bids/project/${id}`);
         setBids(bidsResponse.data);
@@ -74,7 +77,7 @@ const ProjectDetails = () => {
       setIsLoading(true);
       const response = await api.get(`/projects/${id}`);
       setProject(response.data);
-      
+
       // If user is client, fetch all bids for this project
       if (user?.role === 'client' || user?.role === 'admin') {
         fetchProjectBids();
@@ -112,14 +115,52 @@ const ProjectDetails = () => {
     }
   };
 
+  const [aiMatch, setAiMatch] = useState(null);
+  const [isGeneratingProposal, setIsGeneratingProposal] = useState(false);
+  const [isCheckingMatch, setIsCheckingMatch] = useState(false);
+
+  const checkSkillMatch = async () => {
+    if (!project || !user || user.role !== 'freelancer') return;
+    setIsCheckingMatch(true);
+    try {
+      const response = await api.post('/ai/match-skills', { projectId: id });
+      setAiMatch(response.data);
+    } catch (error) {
+      console.error('Failed to calculate skill match', error);
+    } finally {
+      setIsCheckingMatch(false);
+    }
+  };
+
+  useEffect(() => {
+    if (project && user?.role === 'freelancer') {
+      checkSkillMatch();
+    }
+  }, [project?._id, user?.role]);
+
+  const handleGenerateProposal = async () => {
+    setIsGeneratingProposal(true);
+    const toastId = toast.loading('✨ AI is generating your proposal...');
+    try {
+      const response = await api.post('/ai/generate-proposal', { projectId: id });
+      setCoverLetter(response.data.proposalText);
+      toast.success('Proposal generated successfully!', { id: toastId });
+    } catch (error) {
+      console.error('Failed to generate proposal', error);
+      toast.error('Failed to generate proposal using AI', { id: toastId });
+    } finally {
+      setIsGeneratingProposal(false);
+    }
+  };
+
   const handleAcceptBid = async (bidId) => {
     if (!window.confirm('Are you sure you want to accept this proposal? This will assign the freelancer and mark the project as in-progress.')) return;
     try {
       await api.put(`/bids/${bidId}/accept`);
-      alert('Bid accepted successfully!');
+      toast.success('Bid accepted successfully!');
       fetchProjectDetails();
     } catch (error) {
-      alert(error.response?.data?.message || 'Failed to accept bid');
+      toast.error(error.response?.data?.message || 'Failed to accept bid');
     }
   };
 
@@ -128,7 +169,7 @@ const ProjectDetails = () => {
       await api.put(`/bids/${bidId}/reject`);
       fetchProjectBids();
     } catch (error) {
-      alert('Failed to reject bid');
+      toast.error('Failed to reject bid');
     }
   };
 
@@ -137,15 +178,15 @@ const ProjectDetails = () => {
 
     try {
       const response = await api.post(`/projects/${id}/reject`);
-      alert("Freelancer rejected and project reopened for bidding.");
+      toast.success("Freelancer rejected and project reopened for bidding.");
       setProject(response.data.project);
-      
+
       // Fetch bids again so list updates
       const bidsResponse = await api.get(`/bids/project/${id}`);
       setBids(bidsResponse.data);
     } catch (error) {
       console.error(error);
-      alert(error.response?.data?.message || "Failed to reject freelancer.");
+      toast.error(error.response?.data?.message || "Failed to reject freelancer.");
     }
   };
 
@@ -160,7 +201,7 @@ const ProjectDetails = () => {
         coverLetter,
       };
       await api.post('/bids', payload);
-      alert('Your proposal has been submitted successfully!');
+      toast.success('Your proposal has been submitted successfully!');
       setBidAmount('');
       setDeliveryTime('');
       setCoverLetter('');
@@ -168,7 +209,7 @@ const ProjectDetails = () => {
       fetchFreelancerBids();
       fetchProjectDetails();
     } catch (error) {
-      alert(error.response?.data?.message || 'Failed to place bid');
+      toast.error(error.response?.data?.message || 'Failed to place bid');
     } finally {
       setIsSubmittingBid(false);
     }
@@ -193,7 +234,16 @@ const ProjectDetails = () => {
           <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
           <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Project Not Found</h2>
           <p className="text-slate-500 dark:text-slate-400 mb-6">The project you are looking for does not exist or has been removed.</p>
-          <button onClick={() => navigate(-1)} className="px-5 py-2.5 bg-primary text-white rounded-xl font-semibold">
+          <button 
+            onClick={() => {
+              if (user?.role === 'client') {
+                navigate('/client-dashboard');
+              } else {
+                navigate('/freelancer-dashboard');
+              }
+            }} 
+            className="px-5 py-2.5 bg-primary text-white rounded-xl font-semibold"
+          >
             Go Back
           </button>
         </div>
@@ -206,11 +256,17 @@ const ProjectDetails = () => {
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-dark-bg">
       <Navbar />
-      
+
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Back navigation */}
-        <button 
-          onClick={() => navigate(-1)}
+        <button
+          onClick={() => {
+            if (user?.role === 'client') {
+              navigate('/client-dashboard');
+            } else {
+              navigate('/freelancer-dashboard');
+            }
+          }}
           className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400 hover:text-primary dark:hover:text-primary transition mb-6 font-semibold"
         >
           <ArrowLeft className="w-4 h-4" /> Back to Dashboard
@@ -219,18 +275,17 @@ const ProjectDetails = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Main Info Column */}
           <div className="lg:col-span-2 space-y-6">
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
               className="bg-white dark:bg-dark-surface p-6 sm:p-8 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm"
             >
               {/* Status & Date */}
               <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-                <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${
-                  project.status === 'open' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-400' :
-                  project.status === 'in-progress' ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/30 dark:text-amber-400' :
-                  'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-400'
-                }`}>
+                <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${project.status === 'open' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-400' :
+                    project.status === 'in-progress' ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/30 dark:text-amber-400' :
+                      'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-400'
+                  }`}>
                   {project.status} status
                 </span>
                 <span className="text-slate-400 text-xs font-medium flex items-center gap-1">
@@ -280,8 +335,8 @@ const ProjectDetails = () => {
                 <h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider mb-3">Skills Required</h3>
                 <div className="flex flex-wrap gap-2">
                   {project.skillsRequired?.map((skill) => (
-                    <span 
-                      key={skill} 
+                    <span
+                      key={skill}
                       className="px-3 py-1.5 bg-slate-100 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-semibold uppercase tracking-wider"
                     >
                       {skill}
@@ -290,14 +345,49 @@ const ProjectDetails = () => {
                 </div>
               </div>
 
+              {/* AI Skill Match Integration */}
+              {user?.role === 'freelancer' && (
+                <div className="mb-8 p-4 rounded-2xl bg-gradient-to-br from-indigo-500/10 via-purple-500/5 to-transparent border border-indigo-500/20 shadow-sm relative overflow-hidden">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="space-y-1.5">
+                      <h4 className="font-extrabold text-sm text-slate-900 dark:text-white flex items-center gap-1.5">
+                        <Bot className="w-4 h-4 text-primary animate-pulse" />
+                        Smart AI Skill Match
+                      </h4>
+                      {isCheckingMatch ? (
+                        <p className="text-xs text-slate-400">Recalculating matching insights...</p>
+                      ) : aiMatch ? (
+                        <>
+                          <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed pr-8">
+                            {aiMatch.explanation}
+                          </p>
+                          <div className="flex items-center gap-1.5 pt-1.5 text-xs text-slate-400 font-semibold">
+                            <span>Analysis powered by Gemini AI</span>
+                          </div>
+                        </>
+                      ) : (
+                        <p className="text-xs text-slate-400">Complete your profile skills to generate matching matching scores.</p>
+                      )}
+                    </div>
+                    
+                    {!isCheckingMatch && aiMatch && (
+                      <div className="text-center bg-indigo-500/15 border border-indigo-500/30 px-3 py-2 rounded-xl">
+                        <span className="font-extrabold text-xl text-primary dark:text-indigo-400">{aiMatch.matchPercentage}%</span>
+                        <p className="text-[9px] font-bold text-slate-450 uppercase mt-0.5 whitespace-nowrap">Match Score</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {/* Milestones */}
               {project.milestones && project.milestones.length > 0 && (
                 <div>
                   <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">Milestones</h3>
                   <div className="space-y-3">
                     {project.milestones.map((milestone, index) => (
-                      <div 
-                        key={index} 
+                      <div
+                        key={index}
                         className="flex justify-between items-center p-4 bg-slate-50 dark:bg-slate-900/40 rounded-xl border border-slate-200/60 dark:border-slate-800"
                       >
                         <div className="flex items-center gap-3">
@@ -316,7 +406,7 @@ const ProjectDetails = () => {
 
             {/* Bids List (Only seen by Project Client Owner when project is Open) */}
             {isClientOwner && project.status === 'open' && (
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 }}
@@ -336,8 +426,8 @@ const ProjectDetails = () => {
                 ) : (
                   <div className="space-y-4">
                     {bids.map((bid) => (
-                      <div 
-                        key={bid._id} 
+                      <div
+                        key={bid._id}
                         className="p-5 bg-slate-50 dark:bg-slate-900/30 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 flex flex-col md:flex-row justify-between gap-4"
                       >
                         <div className="flex-1">
@@ -382,9 +472,8 @@ const ProjectDetails = () => {
                                 </button>
                               </div>
                             ) : (
-                              <span className={`capitalize text-xs px-3 py-1 rounded-full font-bold ${
-                                bid.status === 'accepted' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400' : 'bg-red-100 text-red-800 dark:bg-red-950/40 dark:text-red-400'
-                              }`}>
+                              <span className={`capitalize text-xs px-3 py-1 rounded-full font-bold ${bid.status === 'accepted' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400' : 'bg-red-100 text-red-800 dark:bg-red-950/40 dark:text-red-400'
+                                }`}>
                                 Proposal {bid.status}
                               </span>
                             )}
@@ -402,7 +491,7 @@ const ProjectDetails = () => {
           <div className="lg:col-span-1 space-y-6">
             {/* If Current User is Client (Owner) */}
             {isClientOwner ? (
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 className="bg-white dark:bg-dark-surface p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-5"
@@ -439,7 +528,7 @@ const ProjectDetails = () => {
                     </div>
 
                     <div className="pt-2 space-y-2">
-                      <Link 
+                      <Link
                         to={`/chat?userId=${project.freelancerAssigned?._id}`}
                         className="w-full px-4 py-2.5 bg-primary hover:bg-primary-dark text-white rounded-xl font-bold text-sm transition flex items-center justify-center gap-2 shadow-md"
                       >
@@ -459,7 +548,7 @@ const ProjectDetails = () => {
               </motion.div>
             ) : (
               /* If Current User is Freelancer (or other user type) */
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 className="space-y-6"
@@ -489,14 +578,24 @@ const ProjectDetails = () => {
                   {/* Case 1: Hired / Assigned Freelancer */}
                   {project.freelancerAssigned?._id === user?._id && (
                     <div className="space-y-4 text-center">
-                      <div className="p-4 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900 rounded-2xl text-emerald-800 dark:text-emerald-400">
-                        <Award className="w-12 h-12 mx-auto mb-2 text-emerald-500 animate-bounce" />
-                        <h4 className="font-bold text-sm">Congratulations!</h4>
-                        <p className="text-xs mt-1 leading-relaxed">You have been hired for this project. Let's work hard and deliver standard outcomes.</p>
-                      </div>
+                      {project.status === 'completed' ? (
+                        <div className="p-5 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-250 dark:border-emerald-900 rounded-3xl text-emerald-800 dark:text-emerald-400 space-y-2">
+                          <div className="w-12 h-12 bg-emerald-500 text-white rounded-2xl flex items-center justify-center mx-auto shadow-md shadow-emerald-500/25">
+                            <Award className="w-6 h-6 animate-pulse" />
+                          </div>
+                          <h4 className="font-extrabold text-sm">Project Completed!</h4>
+                          <p className="text-xs leading-relaxed">You have successfully completed this project and delivered standard outcomes. Great job!</p>
+                        </div>
+                      ) : (
+                        <div className="p-4 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900 rounded-2xl text-emerald-800 dark:text-emerald-400">
+                          <Award className="w-12 h-12 mx-auto mb-2 text-emerald-500 animate-bounce" />
+                          <h4 className="font-bold text-sm">Congratulations!</h4>
+                          <p className="text-xs mt-1 leading-relaxed">You have been hired for this project. Let's work hard and deliver standard outcomes.</p>
+                        </div>
+                      )}
 
                       <div className="space-y-2 pt-2">
-                        <Link 
+                        <Link
                           to={`/chat?userId=${project.client?._id}`}
                           className="w-full px-4 py-2.5 bg-primary hover:bg-primary-dark text-white rounded-xl font-bold text-sm transition flex items-center justify-center gap-2 shadow-md"
                         >
@@ -509,11 +608,10 @@ const ProjectDetails = () => {
                   {/* Case 2: Project is Open & Freelancer Has Already Bid */}
                   {project.freelancerAssigned?._id !== user?._id && myBid && !isRebidding && (
                     <div className="space-y-4">
-                      <div className={`p-4 rounded-xl border text-xs font-semibold text-center ${
-                        myBid.status === 'accepted' ? 'bg-emerald-50 border-emerald-250 text-emerald-800' :
-                        myBid.status === 'rejected' ? 'bg-red-50 border-red-250 text-red-800' :
-                        'bg-amber-50 border-amber-250 text-amber-850 dark:bg-amber-950/10 dark:border-amber-900/60 dark:text-amber-400'
-                      }`}>
+                      <div className={`p-4 rounded-xl border text-xs font-semibold text-center ${myBid.status === 'accepted' ? 'bg-emerald-50 border-emerald-250 text-emerald-800' :
+                          myBid.status === 'rejected' ? 'bg-red-50 border-red-250 text-red-800' :
+                            'bg-amber-50 border-amber-250 text-amber-850 dark:bg-amber-950/10 dark:border-amber-900/60 dark:text-amber-400'
+                        }`}>
                         Application Status: <span className="uppercase font-bold">{myBid.status}</span>
                       </div>
 
@@ -554,7 +652,7 @@ const ProjectDetails = () => {
                       <div className="grid grid-cols-2 gap-3">
                         <div>
                           <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Bid Amount (₹)</label>
-                          <input 
+                          <input
                             type="number"
                             required
                             placeholder="e.g. 200"
@@ -565,7 +663,7 @@ const ProjectDetails = () => {
                         </div>
                         <div>
                           <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Delivery Time</label>
-                          <input 
+                          <input
                             type="text"
                             required
                             placeholder="e.g. 3 days"
@@ -577,8 +675,19 @@ const ProjectDetails = () => {
                       </div>
 
                       <div>
-                        <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Cover Letter / Proposal</label>
-                        <textarea 
+                        <div className="flex justify-between items-center mb-1.5">
+                          <label className="block text-xs font-bold text-slate-400 uppercase">Cover Letter / Proposal</label>
+                          <button
+                            type="button"
+                            onClick={handleGenerateProposal}
+                            disabled={isGeneratingProposal}
+                            className="text-[10px] font-bold text-primary dark:text-indigo-400 hover:underline flex items-center gap-1 bg-primary/10 dark:bg-indigo-500/10 px-2 py-1 rounded-md transition"
+                          >
+                            <Sparkles className="w-3 h-3 text-primary dark:text-indigo-400 animate-pulse" />
+                            {isGeneratingProposal ? 'Generating...' : 'AI Generate Proposal'}
+                          </button>
+                        </div>
+                        <textarea
                           required
                           rows={4}
                           placeholder="Why are you a perfect fit for this job? Tell the client about your unique expertise..."

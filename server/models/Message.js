@@ -23,6 +23,14 @@ const messageSchema = new mongoose.Schema(
     read: {
       type: Boolean,
       default: false,
+    },
+    isSuspicious: {
+      type: Boolean,
+      default: false,
+    },
+    suspiciousReason: {
+      type: String,
+      default: "",
     }
   },
   { timestamps: true }

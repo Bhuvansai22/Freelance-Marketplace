@@ -1,17 +1,18 @@
 import { useState, useEffect } from 'react';
+import toast from 'react-hot-toast';
 import { Link, useSearchParams } from 'react-router-dom';
 import { io } from 'socket.io-client';
 import Navbar from '../components/Navbar';
 import useAuthStore, { api } from '../store/authStore';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Briefcase, 
-  IndianRupee, 
-  Clock, 
-  Search, 
-  Filter, 
-  MessageSquare, 
-  ChevronRight, 
+import {
+  Briefcase,
+  IndianRupee,
+  Clock,
+  Search,
+  Filter,
+  MessageSquare,
+  ChevronRight,
   Award,
   X,
   Check,
@@ -24,7 +25,9 @@ import {
   Calendar,
   Mail,
   Phone,
-  FileText
+  FileText,
+  Sparkles,
+  Bot
 } from 'lucide-react';
 import { Send } from 'lucide-react';
 
@@ -34,7 +37,7 @@ const FreelancerDashboard = () => {
   const [myBids, setMyBids] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isBidsLoading, setIsBidsLoading] = useState(true);
-  
+
   // Search & Filter state
   const [search, setSearch] = useState('');
   const [skillsFilter, setSkillsFilter] = useState('');
@@ -47,6 +50,47 @@ const FreelancerDashboard = () => {
   const [deliveryTime, setDeliveryTime] = useState('');
   const [coverLetter, setCoverLetter] = useState('');
   const [isSubmittingBid, setIsSubmittingBid] = useState(false);
+  const [isGeneratingProposal, setIsGeneratingProposal] = useState(false);
+  const [aiMatch, setAiMatch] = useState(null);
+  const [isCheckingMatch, setIsCheckingMatch] = useState(false);
+
+  const checkSkillMatch = async (projectId) => {
+    if (!projectId || !user || user.role !== 'freelancer') return;
+    setIsCheckingMatch(true);
+    setAiMatch(null);
+    try {
+      const response = await api.post('/ai/match-skills', { projectId });
+      setAiMatch(response.data);
+    } catch (error) {
+      console.error('Failed to calculate skill match', error);
+    } finally {
+      setIsCheckingMatch(false);
+    }
+  };
+
+  useEffect(() => {
+    if (selectedProject) {
+      checkSkillMatch(selectedProject._id);
+    } else {
+      setAiMatch(null);
+    }
+  }, [selectedProject?._id]);
+
+  const handleGenerateProposal = async () => {
+    if (!selectedProject) return;
+    setIsGeneratingProposal(true);
+    const toastId = toast.loading('✨ AI is generating your proposal...');
+    try {
+      const response = await api.post('/ai/generate-proposal', { projectId: selectedProject._id });
+      setCoverLetter(response.data.proposalText);
+      toast.success('Proposal generated successfully!', { id: toastId });
+    } catch (error) {
+      console.error('Failed to generate proposal', error);
+      toast.error('Failed to generate proposal using AI', { id: toastId });
+    } finally {
+      setIsGeneratingProposal(false);
+    }
+  };
 
   // Progress & Live Message modal state
   const [activeProgressProject, setActiveProgressProject] = useState(null);
@@ -81,6 +125,8 @@ const FreelancerDashboard = () => {
   useEffect(() => {
     if (tabParam) {
       setActiveTab(tabParam);
+    } else {
+      setActiveTab('browse');
     }
   }, [tabParam]);
   const [profileData, setProfileData] = useState({
@@ -175,18 +221,18 @@ const FreelancerDashboard = () => {
         hourlyRate: profileData.hourlyRate ? Number(profileData.hourlyRate) : null,
       };
       const response = await api.put('/auth/profile', payload);
-      
+
       const currentUser = JSON.parse(localStorage.getItem('user'));
       if (currentUser) {
         const newUserObj = { ...currentUser, ...response.data };
         localStorage.setItem('user', JSON.stringify(newUserObj));
       }
-      
+
       setProfileSuccess(true);
       fetchProfile();
       setTimeout(() => setProfileSuccess(false), 3000);
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to update profile');
+      toast.error(err.response?.data?.message || 'Failed to update profile');
     } finally {
       setIsUpdatingProfile(false);
     }
@@ -237,14 +283,14 @@ const FreelancerDashboard = () => {
         coverLetter,
       };
       await api.post('/bids', payload);
-      alert('Bid placed successfully!');
+      toast.success('Bid placed successfully!');
       setSelectedProject(null);
       setBidAmount('');
       setDeliveryTime('');
       setCoverLetter('');
       fetchMyBids();
     } catch (error) {
-      alert(error.response?.data?.message || 'Failed to place bid');
+      toast.error(error.response?.data?.message || 'Failed to place bid');
     } finally {
       setIsSubmittingBid(false);
     }
@@ -256,7 +302,7 @@ const FreelancerDashboard = () => {
     setLiveMessage('');
     setMessageSuccess(false);
     setChatHistory([]);
-    
+
     // Fetch full project structure from backend to get fresh milestones and client
     try {
       const response = await api.get(`/projects/${projectObj._id}`);
@@ -298,10 +344,10 @@ const FreelancerDashboard = () => {
         milestones: progressMilestones,
         status: projectStatus,
       });
-      alert('Progress and milestones updated successfully!');
+      toast.success('Progress and milestones updated successfully!');
       fetchMyBids(); // reload bids list to sync status
     } catch (error) {
-      alert(error.response?.data?.message || 'Failed to update progress');
+      toast.error(error.response?.data?.message || 'Failed to update progress');
     } finally {
       setIsSavingProgress(false);
     }
@@ -327,7 +373,7 @@ const FreelancerDashboard = () => {
       }, 1500);
       fetchMyBids();
     } catch (error) {
-      alert(error.response?.data?.message || 'Failed to submit rating');
+      toast.error(error.response?.data?.message || 'Failed to submit rating');
       setIsSubmittingRating(false);
     }
   };
@@ -341,16 +387,16 @@ const FreelancerDashboard = () => {
         receiver: activeProgressProject.client?._id || activeProgressProject.client,
         content: liveMessage,
       };
-      
+
       // 1. Save to database
       const response = await api.post('/messages', payload);
-      
+
       // Update local chat history in modal
       setChatHistory((prev) => [...prev, response.data]);
-      
+
       // 2. Emit via Socket.io so recipient gets it live
       try {
-        let SOCKET_URL = import.meta.env.VITE_API_URL || 
+        let SOCKET_URL = import.meta.env.VITE_API_URL ||
           (import.meta.env.MODE === 'development' ? 'http://localhost:5000' : 'https://freelance-marketplace-dk90.onrender.com');
 
         // Clean up trailing slash and /api suffix so Socket.io connects to the root domain
@@ -374,7 +420,7 @@ const FreelancerDashboard = () => {
       setLiveMessage('');
       setTimeout(() => setMessageSuccess(false), 3000);
     } catch (error) {
-      alert('Failed to send message to client');
+      toast.error('Failed to send message to client');
     } finally {
       setIsSendingMessage(false);
     }
@@ -385,29 +431,38 @@ const FreelancerDashboard = () => {
   const acceptedBids = myBids.filter(b => b.status === 'accepted').length;
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-dark-bg">
+    <div className="min-h-screen relative bg-slate-50 dark:bg-dark-bg transition-colors duration-200 aurora-mesh tech-grid">
+      {/* Premium Tech Glow blobs */}
+      <div className="glow-blob w-[500px] h-[500px] bg-primary/10 top-[-100px] left-[-100px] dark:bg-primary/5 pointer-events-none" />
+      <div className="glow-blob w-[600px] h-[600px] bg-secondary/10 bottom-[-150px] right-[-100px] dark:bg-secondary/5 pointer-events-none" />
+      
+      {/* Centerpiece Tech Vector & Pulse Effect */}
+      <div className="tech-centerpiece">
+        <div className="tech-radar-pulse" />
+      </div>
+      
       <Navbar />
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-6 sm:py-8 page-fade-in">
         {/* Welcome Section */}
-        <div className="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div className="mb-6 sm:mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+            <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
               Freelancer Dashboard
               {profileData.verifiedBadges?.length > 0 && (
                 <Award className="w-6 h-6 text-amber-500 fill-current animate-pulse" title="Verified Professional" />
               )}
             </h1>
-            <p className="text-slate-500 dark:text-slate-400">Browse opportunities, manage profile details, take assessments, and grow your career.</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">Browse opportunities, manage profile details, take assessments, and grow your career.</p>
           </div>
         </div>
 
         {/* Navigation Tabs */}
-        <div className="flex gap-2 p-1 bg-slate-100 dark:bg-slate-900/60 rounded-2xl border border-slate-200/50 dark:border-slate-800 mb-8 max-w-lg shadow-sm">
+        <div className="flex gap-1 p-1 bg-slate-100 dark:bg-slate-900/60 rounded-2xl border border-slate-200/50 dark:border-slate-800 mb-6 sm:mb-8 shadow-sm w-full sm:max-w-lg">
           {[
-            { id: 'browse', name: 'Browse Projects', icon: Briefcase },
-            { id: 'profile', name: 'My Profile & CV', icon: User },
-            { id: 'assessment', name: 'Skills Verification', icon: Award },
+            { id: 'browse', name: 'Browse', fullName: 'Browse Projects', icon: Briefcase },
+            { id: 'profile', name: 'Profile', fullName: 'My Profile & CV', icon: User },
+            { id: 'assessment', name: 'Skills', fullName: 'Skills Verification', icon: Award },
           ].map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -415,14 +470,14 @@ const FreelancerDashboard = () => {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-xs font-bold transition-all duration-300 relative ${
-                  isActive 
-                    ? 'bg-white dark:bg-dark-surface text-primary shadow-md border border-slate-200/40 dark:border-slate-700/40 scale-100'
+                className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 px-2 sm:px-4 rounded-xl text-xs font-bold transition-all duration-300 relative ${isActive
+                    ? 'glass-card text-primary font-bold shadow-md'
                     : 'text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800/40'
-                }`}
+                  }`}
               >
-                <Icon className={`w-4 h-4 ${isActive ? 'text-primary' : 'text-slate-400'}`} />
-                {tab.name}
+                <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-primary' : 'text-slate-400'}`} />
+                <span className="hidden sm:inline">{tab.fullName}</span>
+                <span className="sm:hidden">{tab.name}</span>
               </button>
             );
           })}
@@ -431,36 +486,35 @@ const FreelancerDashboard = () => {
         {activeTab === 'browse' && (
           <>
             {/* Stats Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6 mb-6 sm:mb-10">
               {[
-                { title: 'Total Bids Placed', value: myBids.length, icon: Briefcase, color: 'text-indigo-500 bg-indigo-50 dark:bg-indigo-950/20' },
+                { title: 'Total Bids', value: myBids.length, icon: Briefcase, color: 'text-indigo-500 bg-indigo-50 dark:bg-indigo-950/20' },
                 { title: 'Active Proposals', value: activeBids, icon: Clock, color: 'text-amber-500 bg-amber-50 dark:bg-amber-950/20' },
-                { title: 'Accepted/Active Projects', value: acceptedBids, icon: Award, color: 'text-emerald-500 bg-emerald-50 dark:bg-emerald-950/20' },
-                { title: 'Technical Badges', value: profileData.verifiedBadges?.length || 0, icon: Award, color: 'text-pink-500 bg-pink-50 dark:bg-pink-950/20' },
+                { title: 'Accepted Projects', value: acceptedBids, icon: Award, color: 'text-emerald-500 bg-emerald-50 dark:bg-emerald-950/20' },
+                { title: 'Badges Earned', value: profileData.verifiedBadges?.length || 0, icon: Award, color: 'text-pink-500 bg-pink-50 dark:bg-pink-950/20' },
               ].map((stat, i) => (
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.1 }}
                   key={stat.title}
-                  className="bg-white dark:bg-dark-surface p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center gap-4"
+                  className="glass-card p-4 sm:p-6 rounded-2xl flex items-center gap-3 sm:gap-4"
                 >
-                  <div className={`p-4 rounded-xl ${stat.color}`}>
-                    <stat.icon className="w-6 h-6" />
+                  <div className={`p-2.5 sm:p-4 rounded-xl shrink-0 ${stat.color}`}>
+                    <stat.icon className="w-5 h-5 sm:w-6 sm:h-6" />
                   </div>
-                  <div>
-                    <p className="text-sm font-medium text-slate-500 dark:text-slate-400">{stat.title}</p>
-                    <p className="text-2xl font-bold text-slate-900 dark:text-white">{stat.value}</p>
+                  <div className="min-w-0">
+                    <p className="text-xs sm:text-sm font-medium text-slate-500 dark:text-slate-400 truncate">{stat.title}</p>
+                    <p className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">{stat.value}</p>
                   </div>
                 </motion.div>
               ))}
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              {/* Main Marketplace Area */}
-              <div className="lg:col-span-2 space-y-6">
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 sm:gap-8">
+              <div className="xl:col-span-2 space-y-6">
                 {/* Search & Filter Component */}
-                <form onSubmit={handleSearchAndFilter} className="bg-white dark:bg-dark-surface p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+                <form onSubmit={handleSearchAndFilter} className="glass-card p-5 rounded-2xl space-y-4">
                   <div className="flex gap-2">
                     <div className="relative flex-1">
                       <Search className="w-5 h-5 absolute left-3 top-3 text-slate-400" />
@@ -514,13 +568,13 @@ const FreelancerDashboard = () => {
                 {/* Project Feed */}
                 <div>
                   <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-4">Available Projects</h2>
-                  
+
                   {isLoading ? (
-                    <div className="flex justify-center items-center py-16 bg-white dark:bg-dark-surface rounded-2xl border border-slate-200 dark:border-slate-800">
+                    <div className="flex justify-center items-center py-16 glass-card rounded-2xl">
                       <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
                     </div>
                   ) : projects.length === 0 ? (
-                    <div className="bg-white dark:bg-dark-surface p-12 rounded-2xl border border-slate-200 dark:border-slate-800 text-center">
+                    <div className="glass-card p-12 rounded-2xl text-center">
                       <Briefcase className="w-12 h-12 text-slate-300 mx-auto mb-3" />
                       <p className="text-slate-500 dark:text-slate-400">No projects match your criteria.</p>
                     </div>
@@ -532,7 +586,7 @@ const FreelancerDashboard = () => {
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ delay: idx * 0.05 }}
                           key={project._id}
-                          className="bg-white dark:bg-dark-surface p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md transition flex flex-col md:flex-row justify-between gap-4"
+                          className="glass-card p-6 rounded-3xl hover:shadow-md hover:scale-[1.01] transition-all duration-300 flex flex-col md:flex-row justify-between gap-4"
                         >
                           <div className="space-y-3 flex-1">
                             <div className="flex items-center gap-2 flex-wrap">
@@ -571,13 +625,35 @@ const FreelancerDashboard = () => {
                             </div>
                           </div>
 
-                          <div className="flex items-end justify-end min-w-[120px]">
-                            <button
-                              onClick={() => setSelectedProject(project)}
-                              className="px-5 py-2.5 bg-primary hover:bg-primary-dark text-white rounded-xl font-semibold text-sm shadow-md transition flex items-center gap-1"
-                            >
-                              Bid Now <ChevronRight className="w-4 h-4" />
-                            </button>
+                          <div className="flex items-center justify-end mt-2 sm:mt-0 sm:ml-2">
+                            {(() => {
+                              if (project.status !== 'open') {
+                                return (
+                                  <span className="px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-500 rounded-xl font-semibold text-xs capitalize border border-slate-200/50 dark:border-slate-700/60 shadow-sm">
+                                    {project.status}
+                                  </span>
+                                );
+                              }
+                              const existingBid = myBids.find(b => b.project?._id === project._id || b.project === project._id);
+                              if (existingBid) {
+                                return (
+                                  <Link
+                                    to={`/projects/${project._id}`}
+                                    className="px-5 py-2.5 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-450 border border-emerald-250 dark:border-emerald-900 rounded-xl font-semibold text-sm transition flex items-center gap-1.5 hover:bg-emerald-100 dark:hover:bg-emerald-950/40"
+                                  >
+                                    <Check className="w-4 h-4" /> Proposal Placed
+                                  </Link>
+                                );
+                              }
+                              return (
+                                <button
+                                  onClick={() => setSelectedProject(project)}
+                                  className="px-5 py-2.5 bg-primary hover:bg-primary-dark text-white rounded-xl font-semibold text-sm shadow-md transition flex items-center gap-1"
+                                >
+                                  Bid Now <ChevronRight className="w-4 h-4" />
+                                </button>
+                              );
+                            })()}
                           </div>
                         </motion.div>
                       ))}
@@ -587,29 +663,28 @@ const FreelancerDashboard = () => {
               </div>
 
               {/* Placed Bids Sidebar */}
-              <div className="lg:col-span-1">
+              <div className="xl:col-span-1">
                 <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-4">Your Placed Bids</h2>
-                
+
                 {isBidsLoading ? (
                   <div className="flex justify-center items-center py-8">
                     <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-primary"></div>
                   </div>
                 ) : myBids.length === 0 ? (
-                  <div className="bg-white dark:bg-dark-surface p-6 rounded-2xl border border-slate-200 dark:border-slate-800 text-center text-slate-500 py-12 text-sm">
+                  <div className="glass-card p-6 rounded-2xl text-center text-slate-500 py-12 text-sm">
                     <Briefcase className="w-8 h-8 mx-auto text-slate-300 mb-2" />
                     <p>You haven't placed any bids yet.</p>
                   </div>
                 ) : (
                   <div className="space-y-4">
                     {myBids.map((bid) => (
-                      <div key={bid._id} className="bg-white dark:bg-dark-surface p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-3">
+                      <div key={bid._id} className="glass-card p-5 rounded-2xl space-y-3">
                         <div className="flex justify-between items-start gap-2">
                           <h4 className="font-bold text-sm text-slate-900 dark:text-white truncate max-w-[180px]">{bid.project?.title || 'Project'}</h4>
-                          <span className={`text-[10px] px-2 py-0.5 rounded font-bold capitalize ${
-                            bid.status === 'accepted' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400' :
-                            bid.status === 'rejected' ? 'bg-red-100 text-red-800 dark:bg-red-950/40 dark:text-red-400' :
-                            'bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-400'
-                          }`}>
+                          <span className={`text-[10px] px-2 py-0.5 rounded font-bold capitalize ${bid.status === 'accepted' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400' :
+                              bid.status === 'rejected' ? 'bg-red-100 text-red-800 dark:bg-red-950/40 dark:text-red-400' :
+                                'bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-400'
+                            }`}>
                             {bid.status}
                           </span>
                         </div>
@@ -624,18 +699,17 @@ const FreelancerDashboard = () => {
                               onClick={() => handleOpenProgressModal(bid.project)}
                               className="w-full py-2 bg-primary/15 hover:bg-primary/25 text-primary dark:text-primary-light rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm"
                             >
-                              <CheckSquare className="w-3.5 h-3.5" /> Update Progress & Chat
+                              <CheckSquare className="w-3.5 h-3.5" /> {bid.project.status === 'completed' ? 'View Progress & Chat' : 'Update Progress & Chat'}
                             </button>
 
                             {bid.project.status === 'completed' && (
                               <button
                                 onClick={() => handleOpenRatingModal(bid.project)}
                                 disabled={ratedClients.includes(bid.project._id)}
-                                className={`w-full py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all border border-transparent ${
-                                  ratedClients.includes(bid.project._id)
+                                className={`w-full py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all border border-transparent ${ratedClients.includes(bid.project._id)
                                     ? 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 cursor-not-allowed'
                                     : 'bg-amber-500 hover:bg-amber-600 text-white shadow-sm shadow-amber-500/25 animate-pulse'
-                                }`}
+                                  }`}
                               >
                                 <Star className="w-3.5 h-3.5 fill-current" />
                                 {ratedClients.includes(bid.project._id) ? 'Client Rated' : 'Rate Client'}
@@ -662,7 +736,7 @@ const FreelancerDashboard = () => {
         {activeTab === 'profile' && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Edit Profile Column */}
-            <div className="lg:col-span-2 bg-white dark:bg-dark-surface p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-6">
+            <div className="lg:col-span-2 glass-card p-6 rounded-3xl space-y-6">
               <div>
                 <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
                   <User className="text-primary w-5 h-5" /> Account Details & CV Settings
@@ -804,7 +878,7 @@ const FreelancerDashboard = () => {
                 <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
                   Stand out to potential clients and get hired up to 3x faster! Take an assessment test to verify your skills and unlock the gold verification badge.
                 </p>
-                <button 
+                <button
                   onClick={() => setActiveTab('assessment')}
                   className="text-xs font-bold text-amber-600 dark:text-amber-400 hover:underline flex items-center gap-1 mt-1"
                 >
@@ -813,11 +887,11 @@ const FreelancerDashboard = () => {
               </div>
 
               {/* Live Preview Card */}
-              <div className="bg-white dark:bg-dark-surface p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden border-t-[5px] border-t-primary">
+              <div className="glass-card p-6 rounded-3xl relative overflow-hidden border-t-[5px] border-t-primary">
                 <span className="absolute top-4 right-4 text-[10px] font-bold uppercase tracking-wider text-slate-400 bg-slate-50 dark:bg-slate-900 px-2 py-0.5 rounded border border-slate-100 dark:border-slate-800">
                   Live Preview
                 </span>
-                
+
                 <div className="space-y-5">
                   <div className="flex items-center gap-3">
                     <div className="w-12 h-12 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-lg relative">
@@ -896,7 +970,7 @@ const FreelancerDashboard = () => {
         )}
 
         {activeTab === 'assessment' && (
-          <div className="bg-white dark:bg-dark-surface p-8 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-6">
+          <div className="glass-card p-8 rounded-3xl space-y-6">
             <div className="flex justify-between items-center pb-4 border-b border-slate-100 dark:border-slate-800">
               <div>
                 <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
@@ -904,7 +978,7 @@ const FreelancerDashboard = () => {
                 </h2>
                 <p className="text-xs text-slate-400 mt-0.5">Test your concepts in JavaScript, React, or HTML/CSS. Score 70% or more to instantly earn the badge!</p>
               </div>
-              <Link 
+              <Link
                 to="/skills-assessment"
                 className="px-4 py-2 bg-primary hover:bg-primary-dark text-white rounded-xl text-xs font-bold transition shadow-md shadow-primary/20"
               >
@@ -939,11 +1013,10 @@ const FreelancerDashboard = () => {
 
                       <Link
                         to="/skills-assessment"
-                        className={`w-full py-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 ${
-                          hasBadge 
+                        className={`w-full py-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 ${hasBadge
                             ? 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 cursor-not-allowed pointer-events-none'
                             : 'bg-primary hover:bg-primary-dark text-white'
-                        }`}
+                          }`}
                       >
                         {hasBadge ? 'Already Verified' : 'Start Verification Assessment'}
                       </Link>
@@ -967,12 +1040,49 @@ const FreelancerDashboard = () => {
               className="bg-white dark:bg-dark-surface max-w-lg w-full rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-2xl relative"
             >
               <div className="mb-4">
-                <h3 className="text-lg font-bold text-slate-900 dark:text-white">Place Bid</h3>
-                <p className="text-xs text-slate-500 mt-1">Project: {selectedProject.title}</p>
+                <div className="flex justify-between items-start gap-4">
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-900 dark:text-white">Place Bid</h3>
+                    <p className="text-xs text-slate-500 mt-1">Project: {selectedProject.title}</p>
+                  </div>
+                  <button 
+                    onClick={() => setSelectedProject(null)}
+                    className="p-1 rounded-lg text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Smart AI Skill Match inside Modal */}
+              <div className="mb-4 p-3.5 rounded-xl bg-gradient-to-br from-indigo-500/10 via-purple-500/5 to-transparent border border-indigo-500/20 shadow-sm relative overflow-hidden">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="space-y-1">
+                    <h4 className="font-extrabold text-xs text-slate-900 dark:text-white flex items-center gap-1.5">
+                      <Bot className="w-3.5 h-3.5 text-primary animate-pulse" />
+                      Smart AI Skill Match
+                    </h4>
+                    {isCheckingMatch ? (
+                      <p className="text-[10px] text-slate-400">Recalculating matching insights...</p>
+                    ) : aiMatch ? (
+                      <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-normal pr-4">
+                        {aiMatch.explanation}
+                      </p>
+                    ) : (
+                      <p className="text-[10px] text-slate-400">Complete your profile skills to generate matching scores.</p>
+                    )}
+                  </div>
+                  {!isCheckingMatch && aiMatch && (
+                    <div className="text-center bg-indigo-500/15 border border-indigo-500/30 px-2.5 py-1.5 rounded-xl">
+                      <span className="font-extrabold text-lg text-primary dark:text-indigo-400">{aiMatch.matchPercentage}%</span>
+                      <p className="text-[8px] font-bold text-slate-500 uppercase mt-0.5 whitespace-nowrap">Match Score</p>
+                    </div>
+                  )}
+                </div>
               </div>
 
               <form onSubmit={handlePlaceBid} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Bid Amount (₹)</label>
                     <input
@@ -997,8 +1107,19 @@ const FreelancerDashboard = () => {
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Cover Letter / Proposal</label>
+                 <div>
+                  <div className="flex justify-between items-center mb-1.5">
+                    <label className="block text-xs font-bold text-slate-400 uppercase">Cover Letter / Proposal</label>
+                    <button
+                      type="button"
+                      onClick={handleGenerateProposal}
+                      disabled={isGeneratingProposal}
+                      className="text-[10px] font-bold text-primary dark:text-indigo-400 hover:underline flex items-center gap-1 bg-primary/10 dark:bg-indigo-500/10 px-2 py-1 rounded-md transition"
+                    >
+                      <Sparkles className="w-3 h-3 text-primary dark:text-indigo-400 animate-pulse" />
+                      {isGeneratingProposal ? 'Generating...' : 'AI Generate Proposal'}
+                    </button>
+                  </div>
                   <textarea
                     required
                     rows={4}
@@ -1052,7 +1173,7 @@ const FreelancerDashboard = () => {
                   <h3 className="text-lg font-bold text-slate-900 dark:text-white mt-1.5">Manage Project Progress</h3>
                   <p className="text-xs text-slate-500 mt-0.5 truncate max-w-[320px]">Project: {activeProgressProject.title}</p>
                 </div>
-                <button 
+                <button
                   onClick={() => setActiveProgressProject(null)}
                   className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg transition hover:bg-slate-100 dark:hover:bg-slate-800"
                 >
@@ -1082,24 +1203,23 @@ const FreelancerDashboard = () => {
                 ) : (
                   <div className="space-y-2.5 max-h-[160px] overflow-y-auto pr-1">
                     {progressMilestones.map((milestone, idx) => (
-                      <div 
+                      <div
                         key={idx}
                         onClick={() => handleToggleMilestone(idx)}
                         className="flex items-center justify-between p-3 rounded-xl border border-slate-100 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-900/20 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/20 transition-all duration-150"
                       >
                         <div className="flex items-center gap-3">
-                          <input 
+                          <input
                             type="checkbox"
                             checked={milestone.status === 'completed' || milestone.status === 'paid'}
                             disabled={milestone.status === 'paid'}
-                            onChange={() => {}} // handled by parent div click
+                            onChange={() => { }} // handled by parent div click
                             className="rounded border-slate-300 text-primary focus:ring-primary w-4 h-4 cursor-pointer"
                           />
-                          <span className={`text-xs font-semibold ${
-                            milestone.status === 'completed' || milestone.status === 'paid' 
-                              ? 'line-through text-slate-400' 
+                          <span className={`text-xs font-semibold ${milestone.status === 'completed' || milestone.status === 'paid'
+                              ? 'line-through text-slate-400'
                               : 'text-slate-700 dark:text-slate-300'
-                          }`}>
+                            }`}>
                             {milestone.title}
                           </span>
                         </div>
@@ -1155,11 +1275,10 @@ const FreelancerDashboard = () => {
                           className={`flex ${isOwn ? 'justify-end' : 'justify-start'}`}
                         >
                           <div
-                            className={`max-w-[85%] px-3 py-2 rounded-xl text-[11px] leading-relaxed shadow-sm ${
-                              isOwn
+                            className={`max-w-[85%] px-3 py-2 rounded-xl text-[11px] leading-relaxed shadow-sm ${isOwn
                                 ? 'bg-primary text-white rounded-tr-none'
                                 : 'bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700/60 text-slate-800 dark:text-slate-200 rounded-tl-none'
-                            }`}
+                              }`}
                           >
                             <p className="break-words font-medium">{msg.content}</p>
                             <span className={`text-[8px] block text-right mt-1 font-semibold ${isOwn ? 'text-white/70' : 'text-slate-400'}`}>
@@ -1265,11 +1384,10 @@ const FreelancerDashboard = () => {
                             className="hover:scale-115 active:scale-95 transition-transform focus:outline-none"
                           >
                             <Star
-                              className={`w-8 h-8 transition-all ${
-                                starVal <= ratingValue
+                              className={`w-8 h-8 transition-all ${starVal <= ratingValue
                                   ? 'text-amber-400 fill-current drop-shadow-sm scale-110'
                                   : 'text-slate-200 dark:text-slate-700/50'
-                              }`}
+                                }`}
                             />
                           </button>
                         ))}

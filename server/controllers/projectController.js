@@ -149,8 +149,17 @@ exports.deleteProject = async (req, res) => {
 // @access  Private/Client
 exports.getMyProjects = async (req, res) => {
   try {
-    const projects = await Project.find({ client: req.user.id }).sort('-createdAt');
-    res.json(projects);
+    const projects = await Project.find({ client: req.user.id }).lean().sort('-createdAt');
+    const Bid = require('../models/Bid');
+    
+    const projectsWithBidsCount = await Promise.all(
+      projects.map(async (project) => {
+        const bidsCount = await Bid.countDocuments({ project: project._id });
+        return { ...project, bidsCount };
+      })
+    );
+    
+    res.json(projectsWithBidsCount);
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Server error' });

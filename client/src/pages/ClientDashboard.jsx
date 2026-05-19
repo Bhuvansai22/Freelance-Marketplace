@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
+import toast from 'react-hot-toast';
 import Navbar from '../components/Navbar';
 import { api } from '../store/authStore';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Briefcase, IndianRupee, Clock, Users, ArrowRight, Eye, Check, X, FileText, MessageSquare, Star, Loader2, Award, User, Calendar, Mail, Phone, CheckCircle } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 
 const ClientDashboard = () => {
   const [projects, setProjects] = useState([]);
@@ -23,8 +24,20 @@ const ClientDashboard = () => {
     return saved ? JSON.parse(saved) : [];
   });
 
+  const [searchParams] = useSearchParams();
+  const tabParam = searchParams.get('tab');
+
   // Profile & Tab navigation states
   const [activeTab, setActiveTab] = useState('projects'); // 'projects', 'experts', 'profile'
+
+  useEffect(() => {
+    if (tabParam) {
+      setActiveTab(tabParam);
+    } else {
+      setActiveTab('projects');
+    }
+  }, [tabParam]);
+
   const [profileData, setProfileData] = useState({
     name: '',
     email: '',
@@ -83,18 +96,18 @@ const ClientDashboard = () => {
         profileType: profileData.profileType || 'individual',
       };
       const response = await api.put('/auth/profile', payload);
-      
+
       const currentUser = JSON.parse(localStorage.getItem('user'));
       if (currentUser) {
         const newUserObj = { ...currentUser, ...response.data };
         localStorage.setItem('user', JSON.stringify(newUserObj));
       }
-      
+
       setProfileSuccess(true);
       fetchProfile();
       setTimeout(() => setProfileSuccess(false), 3000);
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to update profile');
+      toast.error(err.response?.data?.message || 'Failed to update profile');
     } finally {
       setIsUpdatingProfile(false);
     }
@@ -153,7 +166,7 @@ const ClientDashboard = () => {
     setIsSubmittingRating(true);
     try {
       await api.post(`/projects/${ratingProject._id}/rate`, { rating: ratingValue });
-      
+
       const updatedRated = [...ratedProjects, ratingProject._id];
       setRatedProjects(updatedRated);
       localStorage.setItem('rated_projects', JSON.stringify(updatedRated));
@@ -167,7 +180,7 @@ const ClientDashboard = () => {
       fetchMyProjects();
       fetchFreelancers();
     } catch (error) {
-      alert(error.response?.data?.message || 'Failed to submit rating');
+      toast.error(error.response?.data?.message || 'Failed to submit rating');
     } finally {
       setIsSubmittingRating(false);
     }
@@ -190,11 +203,11 @@ const ClientDashboard = () => {
     if (!window.confirm('Are you sure you want to accept this proposal? This will assign the freelancer and mark the project as in-progress.')) return;
     try {
       await api.put(`/bids/${bidId}/accept`);
-      alert('Bid accepted successfully!');
+      toast.success('Bid accepted successfully!');
       setSelectedProject(null);
       fetchMyProjects();
     } catch (error) {
-      alert(error.response?.data?.message || 'Failed to accept bid');
+      toast.error(error.response?.data?.message || 'Failed to accept bid');
     }
   };
 
@@ -203,7 +216,7 @@ const ClientDashboard = () => {
       await api.put(`/bids/${bidId}/reject`);
       setBids(bids.map(b => b._id === bidId ? { ...b, status: 'rejected' } : b));
     } catch (error) {
-      alert('Failed to reject bid');
+      toast.error('Failed to reject bid');
     }
   };
 
@@ -213,27 +226,36 @@ const ClientDashboard = () => {
   const totalBidsReceived = projects.reduce((acc, p) => acc + (p.bidsCount || 0), 0); // we can calculate this or fetch it.
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-dark-bg">
-      <Navbar />
+    <div className="min-h-screen relative bg-slate-50 dark:bg-dark-bg transition-colors duration-200 aurora-mesh tech-grid">
+      {/* Premium Tech Glow blobs */}
+      <div className="glow-blob w-[500px] h-[500px] bg-primary/10 top-[-100px] left-[-100px] dark:bg-primary/5 pointer-events-none" />
+      <div className="glow-blob w-[600px] h-[600px] bg-secondary/10 bottom-[-150px] right-[-100px] dark:bg-secondary/5 pointer-events-none" />
       
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      {/* Centerpiece Tech Vector & Pulse Effect */}
+      <div className="tech-centerpiece">
+        <div className="tech-radar-pulse" />
+      </div>
+      
+      <Navbar />
+
+      <main className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-6 sm:py-8 page-fade-in">
         {/* Welcome Section */}
-        <div className="flex justify-between items-center mb-8">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6 sm:mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Client Dashboard</h1>
-            <p className="text-slate-500 dark:text-slate-400">Manage your projects, evaluate proposals, and hire experts.</p>
+            <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white">Client Dashboard</h1>
+            <p className="text-slate-500 dark:text-slate-400 text-sm mt-0.5">Manage your projects, evaluate proposals, and hire experts.</p>
           </div>
-          <Link to="/post-project" className="px-5 py-2.5 bg-primary hover:bg-primary-dark text-white rounded-xl shadow-lg shadow-primary/25 font-semibold transition duration-200">
+          <Link to="/post-project" className="inline-flex items-center justify-center px-5 py-2.5 bg-primary hover:bg-primary-dark text-white rounded-xl shadow-lg shadow-primary/25 font-semibold transition duration-200 text-sm shrink-0">
             Post a New Project
           </Link>
         </div>
 
         {/* Navigation Tabs */}
-        <div className="flex gap-2 p-1 bg-slate-100 dark:bg-slate-900/60 rounded-2xl border border-slate-200/50 dark:border-slate-800 mb-8 max-w-lg shadow-sm">
+        <div className="flex gap-1 p-1 bg-slate-100 dark:bg-slate-900/60 rounded-2xl border border-slate-200/50 dark:border-slate-800 mb-6 sm:mb-8 shadow-sm w-full sm:max-w-lg">
           {[
-            { id: 'projects', name: 'My Projects', icon: Briefcase },
-            { id: 'experts', name: 'Browse Experts', icon: Users },
-            { id: 'profile', name: 'Company Profile Settings', icon: User },
+            { id: 'projects', name: 'Projects', fullName: 'My Projects', icon: Briefcase },
+            { id: 'experts', name: 'Experts', fullName: 'Browse Experts', icon: Users },
+            { id: 'profile', name: 'Profile', fullName: 'Company Profile', icon: User },
           ].map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -241,14 +263,14 @@ const ClientDashboard = () => {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-xs font-bold transition-all duration-300 relative ${
-                  isActive 
-                    ? 'bg-white dark:bg-dark-surface text-primary shadow-md border border-slate-200/40 dark:border-slate-700/40 scale-100'
+                className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 px-2 sm:px-4 rounded-xl text-xs font-bold transition-all duration-300 relative ${isActive
+                    ? 'glass-card text-primary font-bold shadow-md'
                     : 'text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800/40'
-                }`}
+                  }`}
               >
-                <Icon className={`w-4 h-4 ${isActive ? 'text-primary' : 'text-slate-400'}`} />
-                {tab.name}
+                <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-primary' : 'text-slate-400'}`} />
+                <span className="hidden sm:inline">{tab.fullName}</span>
+                <span className="sm:hidden">{tab.name}</span>
               </button>
             );
           })}
@@ -257,42 +279,42 @@ const ClientDashboard = () => {
         {activeTab === 'projects' && (
           <>
             {/* Stats Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
+            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6 mb-6 sm:mb-10">
               {[
                 { title: 'Total Projects', value: projects.length, icon: Briefcase, color: 'text-indigo-500 bg-indigo-50 dark:bg-indigo-950/20' },
                 { title: 'Active Contracts', value: activeProjects, icon: Clock, color: 'text-amber-500 bg-amber-50 dark:bg-amber-950/20' },
-                { title: 'Completed Projects', value: completedProjects, icon: Check, color: 'text-emerald-500 bg-emerald-50 dark:bg-emerald-950/20' },
-                { title: 'Total Freelancers Hired', value: activeProjects + completedProjects, icon: Users, color: 'text-pink-500 bg-pink-50 dark:bg-pink-950/20' },
+                { title: 'Completed', value: completedProjects, icon: Check, color: 'text-emerald-500 bg-emerald-50 dark:bg-emerald-950/20' },
+                { title: 'Hired', value: activeProjects + completedProjects, icon: Users, color: 'text-pink-500 bg-pink-50 dark:bg-pink-950/20' },
               ].map((stat, i) => (
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.1 }}
                   key={stat.title}
-                  className="bg-white dark:bg-dark-surface p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center gap-4"
+                  className="glass-card p-4 sm:p-6 rounded-2xl flex items-center gap-3 sm:gap-4"
                 >
-                  <div className={`p-4 rounded-xl ${stat.color}`}>
-                    <stat.icon className="w-6 h-6" />
+                  <div className={`p-2.5 sm:p-4 rounded-xl shrink-0 ${stat.color}`}>
+                    <stat.icon className="w-5 h-5 sm:w-6 sm:h-6" />
                   </div>
-                  <div>
-                    <p className="text-sm font-medium text-slate-500 dark:text-slate-400">{stat.title}</p>
-                    <p className="text-2xl font-bold text-slate-900 dark:text-white">{stat.value}</p>
+                  <div className="min-w-0">
+                    <p className="text-xs sm:text-sm font-medium text-slate-500 dark:text-slate-400 truncate">{stat.title}</p>
+                    <p className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">{stat.value}</p>
                   </div>
                 </motion.div>
               ))}
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 sm:gap-8">
               {/* Projects List */}
-              <div className="lg:col-span-2">
+              <div className="xl:col-span-2">
                 <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-4">Your Posted Projects</h2>
-                
+
                 {isLoading ? (
                   <div className="flex justify-center items-center py-12">
                     <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
                   </div>
                 ) : projects.length === 0 ? (
-                  <div className="bg-white dark:bg-dark-surface rounded-2xl border border-slate-200 dark:border-slate-800 p-8 text-center">
+                  <div className="glass-card rounded-2xl p-8 text-center">
                     <Briefcase className="w-12 h-12 text-slate-300 mx-auto mb-3" />
                     <p className="text-slate-500 dark:text-slate-400 mb-4">You haven't posted any projects yet.</p>
                     <Link to="/post-project" className="text-primary font-semibold hover:underline">Post your first project now</Link>
@@ -303,22 +325,21 @@ const ClientDashboard = () => {
                       <motion.div
                         layout
                         key={project._id}
-                        className="bg-white dark:bg-dark-surface p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md transition flex flex-col md:flex-row justify-between gap-4"
+                        className="glass-card p-4 sm:p-6 rounded-2xl hover:shadow-md transition-all duration-300 flex flex-col gap-4"
                       >
                         <div>
                           <div className="flex items-center gap-3 mb-2">
-                            <span className={`px-2.5 py-0.5 rounded text-xs font-semibold uppercase ${
-                              project.status === 'open' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-400' :
-                              project.status === 'in-progress' ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/30 dark:text-amber-400' :
-                              'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-400'
-                            }`}>
+                            <span className={`px-2.5 py-0.5 rounded text-xs font-semibold uppercase ${project.status === 'open' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-400' :
+                                project.status === 'in-progress' ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/30 dark:text-amber-400' :
+                                  'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-400'
+                              }`}>
                               {project.status}
                             </span>
                             <span className="text-slate-400 text-xs">{new Date(project.createdAt).toLocaleDateString()}</span>
                           </div>
                           <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">{project.title}</h3>
                           <p className="text-slate-500 dark:text-slate-400 text-sm mb-4 line-clamp-2">{project.description}</p>
-                          
+
                           <div className="flex flex-wrap gap-4 text-xs font-semibold text-slate-400">
                             <span className="flex items-center gap-1 font-bold text-emerald-600 dark:text-emerald-400">
                               <IndianRupee className="w-4 h-4 text-emerald-500" />
@@ -328,7 +349,7 @@ const ClientDashboard = () => {
                           </div>
                         </div>
 
-                        <div className="flex flex-col justify-end gap-2 min-w-[120px] shrink-0">
+                        <div className="flex flex-row sm:flex-col gap-2 flex-wrap">
                           {project.status === 'open' && (
                             <button
                               onClick={() => handleViewBids(project)}
@@ -347,11 +368,10 @@ const ClientDashboard = () => {
                             <button
                               onClick={() => handleOpenRatingModal(project)}
                               disabled={ratedProjects.includes(project._id)}
-                              className={`w-full py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition border border-transparent ${
-                                ratedProjects.includes(project._id)
+                              className={`w-full py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition border border-transparent ${ratedProjects.includes(project._id)
                                   ? 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 cursor-not-allowed'
                                   : 'bg-amber-500 hover:bg-amber-600 text-white shadow-sm shadow-amber-500/25 animate-pulse'
-                              }`}
+                                }`}
                             >
                               <Star className="w-3.5 h-3.5 fill-current" />
                               {ratedProjects.includes(project._id) ? 'Rated Expert' : 'Rate Freelancer'}
@@ -365,14 +385,14 @@ const ClientDashboard = () => {
               </div>
 
               {/* Bids Sidebar */}
-              <div className="lg:col-span-1">
+              <div className="xl:col-span-1">
                 <AnimatePresence mode="wait">
                   {selectedProject && (
                     <motion.div
                       initial={{ opacity: 0, x: 20 }}
                       animate={{ opacity: 1, x: 0 }}
                       exit={{ opacity: 0, x: 20 }}
-                      className="bg-white dark:bg-dark-surface p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4"
+                      className="glass-card p-6 rounded-3xl space-y-4"
                     >
                       <div className="flex justify-between items-start gap-2 pb-3 border-b border-slate-100 dark:border-slate-800">
                         <div>
@@ -436,9 +456,8 @@ const ClientDashboard = () => {
                                     </button>
                                   </div>
                                 ) : (
-                                  <span className={`capitalize text-[10px] px-2 py-0.5 rounded font-bold ${
-                                    bid.status === 'accepted' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400' : 'bg-red-100 text-red-800 dark:bg-red-950/40 dark:text-red-400'
-                                  }`}>
+                                  <span className={`capitalize text-[10px] px-2 py-0.5 rounded font-bold ${bid.status === 'accepted' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400' : 'bg-red-100 text-red-800 dark:bg-red-950/40 dark:text-red-400'
+                                    }`}>
                                     {bid.status}
                                   </span>
                                 )}
@@ -470,11 +489,11 @@ const ClientDashboard = () => {
             </div>
 
             {isFreelancersLoading ? (
-              <div className="flex justify-center items-center py-16 bg-white dark:bg-dark-surface rounded-3xl border border-slate-200 dark:border-slate-800/80">
+              <div className="flex justify-center items-center py-16 glass-card rounded-3xl">
                 <Loader2 className="animate-spin text-primary w-8 h-8" />
               </div>
             ) : freelancers.length === 0 ? (
-              <div className="bg-white dark:bg-dark-surface p-12 rounded-3xl border border-slate-200 dark:border-slate-800/80 text-center">
+              <div className="glass-card p-12 rounded-3xl text-center">
                 <Users className="w-12 h-12 text-slate-300 mx-auto mb-3" />
                 <p className="text-slate-500 dark:text-slate-400">No freelancers are currently available on the platform.</p>
               </div>
@@ -486,7 +505,7 @@ const ClientDashboard = () => {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: idx * 0.08 }}
                     key={freelancer._id}
-                    className="bg-white dark:bg-dark-surface rounded-3xl border border-slate-200 dark:border-slate-800/80 p-6 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 relative overflow-hidden flex flex-col justify-between border-t-[5px] border-t-primary"
+                    className="glass-card rounded-3xl p-6 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 relative overflow-hidden flex flex-col justify-between border-t-[5px] border-t-primary"
                   >
                     <div>
                       {/* Header: Avatar, Name & Hourly Rate */}
@@ -582,14 +601,14 @@ const ClientDashboard = () => {
         {activeTab === 'profile' && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Edit Profile Column */}
-            <div className="lg:col-span-2 bg-white dark:bg-dark-surface p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-6">
+            <div className="lg:col-span-2 glass-card p-6 rounded-3xl space-y-6">
               <div>
                 <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
                   <User className="text-primary w-5 h-5" /> {profileData.profileType === 'corporate' ? 'Company Profile Settings' : 'Client Profile Settings'}
                 </h2>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  {profileData.profileType === 'corporate' 
-                    ? 'Keep your corporate and contact details updated to attract elite freelancers to your projects.' 
+                  {profileData.profileType === 'corporate'
+                    ? 'Keep your corporate and contact details updated to attract elite freelancers to your projects.'
                     : 'Keep your recruiter and contact details updated to build candidate trust.'}
                 </p>
               </div>
@@ -608,11 +627,10 @@ const ClientDashboard = () => {
                     <button
                       type="button"
                       onClick={() => setProfileData({ ...profileData, profileType: 'individual' })}
-                      className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold transition-all ${
-                        profileData.profileType === 'individual'
-                          ? 'bg-white dark:bg-dark-surface text-primary shadow-sm scale-[1.02]'
+                      className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold transition-all ${profileData.profileType === 'individual'
+                          ? 'glass-card text-primary shadow-sm scale-[1.02]'
                           : 'text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                      }`}
+                        }`}
                     >
                       <User className="w-4 h-4" />
                       Individual Client
@@ -620,11 +638,10 @@ const ClientDashboard = () => {
                     <button
                       type="button"
                       onClick={() => setProfileData({ ...profileData, profileType: 'corporate' })}
-                      className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold transition-all ${
-                        profileData.profileType === 'corporate'
-                          ? 'bg-white dark:bg-dark-surface text-primary shadow-sm scale-[1.02]'
+                      className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold transition-all ${profileData.profileType === 'corporate'
+                          ? 'glass-card text-primary shadow-sm scale-[1.02]'
                           : 'text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                      }`}
+                        }`}
                     >
                       <Briefcase className="w-4 h-4" />
                       Corporate Entity
@@ -733,27 +750,25 @@ const ClientDashboard = () => {
                   {profileData.profileType === 'corporate' ? '🏢 Corporate Identity Vetted' : '👤 Individual Recruiter Vetted'}
                 </h4>
                 <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                  {profileData.profileType === 'corporate' 
+                  {profileData.profileType === 'corporate'
                     ? 'Keeping your corporate information comprehensive helps build trust and increases organic bid submissions from verified specialists up to 40%.'
                     : 'Having a verified individual recruiter profile helps candidates understand your vision and submit higher-quality proposals.'}
                 </p>
               </div>
 
               {/* Company/Individual Showcase Card */}
-              <div className={`bg-white dark:bg-dark-surface p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden border-t-[5px] ${
-                profileData.profileType === 'corporate' ? 'border-t-primary' : 'border-t-emerald-500'
-              }`}>
+              <div className={`glass-card p-6 rounded-3xl relative overflow-hidden border-t-[5px] ${profileData.profileType === 'corporate' ? 'border-t-primary' : 'border-t-emerald-500'
+                }`}>
                 <span className="absolute top-4 right-4 text-[10px] font-bold uppercase tracking-wider text-slate-400 bg-slate-50 dark:bg-slate-900 px-2 py-0.5 rounded border border-slate-100 dark:border-slate-800">
                   Profile Card
                 </span>
-                
+
                 <div className="space-y-5">
                   <div className="flex items-center gap-3">
-                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-bold text-lg relative ${
-                      profileData.profileType === 'corporate' 
-                        ? 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400' 
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-bold text-lg relative ${profileData.profileType === 'corporate'
+                        ? 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400'
                         : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
-                    }`}>
+                      }`}>
                       {profileData.name ? profileData.name.charAt(0).toUpperCase() : (profileData.profileType === 'corporate' ? 'C' : 'I')}
                     </div>
                     <div>
@@ -803,8 +818,8 @@ const ClientDashboard = () => {
                       {profileData.profileType === 'corporate' ? 'Corporate Summary' : 'Personal Introduction'}
                     </span>
                     <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed italic line-clamp-3">
-                      {profileData.bio || (profileData.profileType === 'corporate' 
-                        ? '"Corporate profile summary not defined yet. Update your details to describe your company culture."' 
+                      {profileData.bio || (profileData.profileType === 'corporate'
+                        ? '"Corporate profile summary not defined yet. Update your details to describe your company culture."'
                         : '"Personal bio has not been defined yet. Introduce yourself to attract matching specialists."')}
                     </p>
                   </div>
@@ -823,7 +838,7 @@ const ClientDashboard = () => {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white dark:bg-dark-surface p-8 max-w-md w-full rounded-3xl border border-slate-100 dark:border-slate-800 shadow-2xl relative text-center space-y-6"
+              className="glass-panel p-8 max-w-md w-full rounded-3xl shadow-2xl relative text-center space-y-6"
             >
               {/* Close Button */}
               <button
@@ -869,11 +884,10 @@ const ClientDashboard = () => {
                           className="hover:scale-115 active:scale-95 transition-transform focus:outline-none"
                         >
                           <Star
-                            className={`w-8 h-8 transition-all ${
-                              starVal <= ratingValue
+                            className={`w-8 h-8 transition-all ${starVal <= ratingValue
                                 ? 'text-amber-400 fill-current drop-shadow-sm scale-110'
                                 : 'text-slate-200 dark:text-slate-700/50'
-                            }`}
+                              }`}
                           />
                         </button>
                       ))}

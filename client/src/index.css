@@ -2,13 +2,18 @@
 
 @theme {
   /* HIRENOVA Professional UI Color Palette */
-  --color-primary: #2563EB; /* Royal Blue */
-  --color-primary-dark: #1D4ED8; /* Hover Blue */
-  --color-secondary: #4F46E5; /* Indigo */
-  
-  --color-success: #10B981; /* Emerald Green */
-  --color-error: #EF4444; /* Red */
-  
+  --color-primary: #4F46E5;
+  /* Indigo */
+  --color-primary-dark: #4338CA;
+  /* Indigo Darker */
+  --color-secondary: #06B6D4;
+  /* Electric Cyan */
+
+  --color-success: #10B981;
+  /* Emerald Green */
+  --color-error: #EF4444;
+  /* Red */
+
   /* Main Background: Pure White */
   --color-brand-bg: #FFFFFF;
   /* Secondary Background: Soft White */
@@ -17,26 +22,237 @@
   --color-brand-card: #F1F5F9;
   /* Border Color: Soft Border Gray */
   --color-brand-border: #E2E8F0;
-  
-  /* Text colors */
-  --color-brand-text: #0F172A; /* Dark Slate */
-  --color-brand-text-sec: #64748B; /* Gray Blue */
 
-  /* Dark mode variants */
-  --color-dark-bg: #0F172A;
-  --color-dark-surface: #1E293B;
+  /* Text colors */
+  --color-brand-text: #0F172A;
+  /* Dark Slate */
+  --color-brand-text-sec: #64748B;
+  /* Gray Blue */
+
+  /* Dark mode variants - Cosmic Navy Obsidian theme */
+  --color-dark-bg: #0A0E1A;
+  --color-dark-surface: #151B2E;
 
   /* Custom Brand Gradient */
-  --background-image-brand-gradient: linear-gradient(135deg, #2563EB, #4F46E5);
+  --background-image-brand-gradient: linear-gradient(135deg, #4F46E5, #06B6D4);
 }
 
+@variant dark (&:where(.dark, .dark *));
+
 @layer base {
+  html,
   body {
-    @apply bg-white text-brand-text dark:bg-dark-bg dark:text-slate-100 transition-colors duration-200;
+    overflow-x: hidden;
+    max-width: 100vw;
+  }
+
+  body {
+    @apply bg-slate-50 text-brand-text dark:bg-dark-bg dark:text-slate-100 transition-colors duration-200;
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
   }
-  
-  h1, h2, h3, h4, h5, h6 {
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     font-family: 'Poppins', 'Inter', system-ui, -apple-system, sans-serif;
+  }
+}
+
+.bg-grid-pattern {
+  background-size: 32px 32px;
+  background-image: radial-gradient(circle, rgba(148, 163, 184, 0.15) 1px, transparent 1px);
+}
+.dark .bg-grid-pattern {
+  background-image: radial-gradient(circle, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+}
+
+/* Glassmorphism Design System Utilities - Performance Optimized */
+.glass-panel {
+  background-color: rgba(255, 255, 255, 0.45);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.04);
+  transform: translate3d(0,0,0);
+  will-change: transform;
+}
+
+.dark .glass-panel {
+  background-color: rgba(10, 14, 26, 0.45);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  transform: translate3d(0,0,0);
+  will-change: transform;
+}
+
+.glass-card {
+  background-color: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  box-shadow: 0 4px 20px 0 rgba(0, 0, 0, 0.02);
+  transform: translate3d(0,0,0);
+  will-change: transform;
+}
+
+.dark .glass-card {
+  background-color: rgba(21, 27, 46, 0.55);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow: 0 4px 20px 0 rgba(0, 0, 0, 0.2);
+  transform: translate3d(0,0,0);
+  will-change: transform;
+}
+
+/* Smooth Page Entry Animation */
+.page-fade-in {
+  animation: fadeInUp 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
+  will-change: transform, opacity;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px) translateZ(0);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) translateZ(0);
+  }
+}
+
+/* Premium Tech Grid Overlay */
+.tech-grid {
+  background-size: 40px 40px;
+  background-image: linear-gradient(to right, rgba(148, 163, 184, 0.05) 1px, transparent 1px),
+                    linear-gradient(to bottom, rgba(148, 163, 184, 0.05) 1px, transparent 1px);
+}
+.dark .tech-grid {
+  background-image: linear-gradient(to right, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+                    linear-gradient(to bottom, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+}
+
+/* Premium Aurora Mesh & Tech Grid */
+.aurora-mesh {
+  background: radial-gradient(circle at 15% 15%, rgba(79, 70, 229, 0.08) 0%, transparent 40%),
+              radial-gradient(circle at 85% 85%, rgba(6, 182, 212, 0.08) 0%, transparent 40%),
+              radial-gradient(circle at 50% 50%, rgba(16, 185, 129, 0.02) 0%, transparent 50%);
+}
+
+.dark .aurora-mesh {
+  background: radial-gradient(circle at 15% 15%, rgba(79, 70, 229, 0.06) 0%, transparent 50%),
+              radial-gradient(circle at 85% 85%, rgba(6, 182, 212, 0.05) 0%, transparent 50%),
+              radial-gradient(circle at 50% 50%, rgba(244, 63, 94, 0.02) 0%, transparent 60%);
+}
+
+/* Floating animated glow light vectors */
+.glow-blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(100px);
+  mix-blend-mode: multiply;
+  pointer-events: none;
+  z-index: 0;
+  transform: translateZ(0);
+}
+.dark .glow-blob {
+  mix-blend-mode: screen;
+  filter: blur(140px);
+}
+
+/* Center Tech Centerpiece Effect */
+.tech-centerpiece {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) translateZ(0);
+  width: 900px;
+  height: 900px;
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.04) 0%, transparent 65%);
+  pointer-events: none;
+  z-index: -1;
+  overflow: hidden;
+  will-change: transform;
+}
+
+.dark .tech-centerpiece {
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.02) 0%, transparent 70%);
+}
+
+.tech-centerpiece::before {
+  content: '';
+  position: absolute;
+  top: 15%;
+  left: 15%;
+  right: 15%;
+  bottom: 15%;
+  border: 1px dashed rgba(99, 102, 241, 0.06);
+  border-radius: 50%;
+  animation: spin-slow 120s linear infinite;
+  will-change: transform;
+  transform: translateZ(0);
+}
+.dark .tech-centerpiece::before {
+  border-color: rgba(99, 102, 241, 0.04);
+}
+
+.tech-centerpiece::after {
+  content: '';
+  position: absolute;
+  top: 28%;
+  left: 28%;
+  right: 28%;
+  bottom: 28%;
+  border: 1px double rgba(6, 182, 212, 0.05);
+  border-radius: 50%;
+  animation: spin-reverse-slow 90s linear infinite;
+  will-change: transform;
+  transform: translateZ(0);
+}
+.dark .tech-centerpiece::after {
+  border-color: rgba(6, 182, 212, 0.03);
+}
+
+/* Center radar pulse ring */
+.tech-radar-pulse {
+  position: absolute;
+  top: 40%;
+  left: 40%;
+  right: 40%;
+  bottom: 40%;
+  border: 1px solid rgba(79, 70, 229, 0.04);
+  border-radius: 50%;
+  animation: radar-ping 12s cubic-bezier(0.1, 0.8, 0.3, 1) infinite;
+  will-change: transform;
+  transform: translateZ(0);
+}
+.dark .tech-radar-pulse {
+  border-color: rgba(79, 70, 229, 0.03);
+}
+
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes spin-reverse-slow {
+  from { transform: rotate(360deg); }
+  to { transform: rotate(0deg); }
+}
+
+@keyframes radar-ping {
+  0% {
+    transform: scale(0.8);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(2.2);
+    opacity: 0;
   }
 }
