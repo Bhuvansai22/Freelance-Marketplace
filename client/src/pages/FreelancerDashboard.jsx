@@ -29,7 +29,8 @@ import {
   FileText,
   Sparkles,
   Bot,
-  ShieldCheck
+  ShieldCheck,
+  AlertTriangle
 } from 'lucide-react';
 import { Send } from 'lucide-react';
 
