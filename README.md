@@ -1,4 +1,4 @@
-# 🚀 Hirenova — Skill-Verified, Mobile-First Freelance Marketplace
+# 🚀 Hirenova — Skill-Verified Freelance Marketplace
 
 Hirenova is a MERN-stack freelance platform specifically designed to empower students and freshers. By offering unlimited free bidding and automated technical assessments, Hirenova shifts the hiring focus from *experience-based reviews* to *proven technical competency*.
 
