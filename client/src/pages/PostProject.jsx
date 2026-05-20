@@ -4,9 +4,9 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
-import { api } from '../store/authStore';
+import useAuthStore, { api } from '../store/authStore';
 import { motion } from 'framer-motion';
-import { Loader2, Plus, Trash2 } from 'lucide-react';
+import { Loader2, Plus, Trash2, User, AlertTriangle } from 'lucide-react';
 import { useState } from 'react';
 
 const projectSchema = z.object({
@@ -27,8 +27,11 @@ const projectSchema = z.object({
 
 const PostProject = () => {
   const navigate = useNavigate();
+  const { user } = useAuthStore();
   const [isLoading, setIsLoading] = useState(false);
   const [milestones, setMilestones] = useState([{ title: '', amount: 0 }]);
+
+  const isProfileComplete = user?.name && user?.email && user?.phnumber && user?.bio;
 
   const { register, handleSubmit, formState: { errors } } = useForm({
     resolver: zodResolver(projectSchema)
@@ -74,6 +77,40 @@ const PostProject = () => {
       setIsLoading(false);
     }
   };
+
+  if (!isProfileComplete) {
+    return (
+      <div className="min-h-screen bg-slate-50 dark:bg-dark-bg flex flex-col relative aurora-mesh tech-grid">
+        <Navbar />
+        <main className="max-w-md mx-auto w-full px-4 py-16 flex-1 flex flex-col justify-center page-fade-in">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="glass-card rounded-3xl border border-red-500/20 shadow-xl p-8 text-center space-y-5"
+          >
+            <div className="w-16 h-16 bg-red-500/10 text-red-500 rounded-full flex items-center justify-center mx-auto shadow-inner">
+              <User className="w-8 h-8 animate-pulse" />
+            </div>
+            <div className="space-y-2">
+              <h1 className="text-xl font-bold text-slate-900 dark:text-white flex items-center justify-center gap-1.5">
+                <AlertTriangle className="w-5 h-5 text-red-500 shrink-0" />
+                Profile Incomplete
+              </h1>
+              <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
+                Before posting a new project, you must complete your account details so freelancers can bid safely. Please make sure your **Name**, **Email**, **Phone Number**, and **Bio** are all filled in.
+              </p>
+            </div>
+            <button
+              onClick={() => navigate('/client-dashboard?tab=profile')}
+              className="w-full py-3 px-4 bg-primary hover:bg-primary-dark text-white rounded-xl text-xs font-bold transition shadow-md shadow-primary/25 hover:scale-[1.01]"
+            >
+              Go to Profile Details Page
+            </button>
+          </motion.div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-dark-bg">

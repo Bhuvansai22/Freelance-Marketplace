@@ -63,8 +63,7 @@ const Login = () => {
 
   const onSubmit = async (data) => {
     try {
-      await login(data.email, data.password);
-      const userObj = JSON.parse(localStorage.getItem('user'));
+      const userObj = await login(data.email, data.password);
       if (userObj?.role === 'client') {
         navigate('/client-dashboard');
       } else {

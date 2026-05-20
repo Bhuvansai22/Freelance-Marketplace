@@ -47,8 +47,7 @@ const Signup = () => {
 
   const onSubmit = async (data) => {
     try {
-      await registerUser(data);
-      const userObj = JSON.parse(localStorage.getItem('user'));
+      const userObj = await registerUser(data);
       if (userObj?.role === 'client') {
         navigate('/client-dashboard');
       } else {

@@ -5,6 +5,15 @@ const Project = require('../models/Project');
 // @access  Private/Client
 exports.createProject = async (req, res) => {
   try {
+    const User = require('../models/User');
+    const clientUser = await User.findById(req.user.id);
+    
+    if (!clientUser || !clientUser.name || !clientUser.email || !clientUser.phnumber || !clientUser.bio) {
+      return res.status(400).json({
+        message: 'Profile incomplete! Please complete your Name, Email, Phone Number, and Bio in your Profile tab before posting a project.'
+      });
+    }
+
     const { title, description, budget, skillsRequired, deadline, milestones } = req.body;
 
     const project = await Project.create({

@@ -9,6 +9,8 @@ import ClientDashboard from './pages/ClientDashboard';
 import PostProject from './pages/PostProject';
 import FreelancerDashboard from './pages/FreelancerDashboard';
 import SkillsAssessment from './pages/SkillsAssessment';
+import ResumeAnalyzer from './pages/ResumeAnalyzer';
+import AIAssessment from './pages/AIAssessment';
 import Chat from './pages/Chat';
 import Landing from './pages/Landing';
 import ProjectDetails from './pages/ProjectDetails';
@@ -130,6 +132,22 @@ function App() {
             element={
               <ProtectedRoute allowedRoles={['freelancer', 'admin']}>
                 <SkillsAssessment />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/resume-analyzer" 
+            element={
+              <ProtectedRoute allowedRoles={['freelancer', 'admin']}>
+                <ResumeAnalyzer />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/ai-assessment" 
+            element={
+              <ProtectedRoute allowedRoles={['freelancer', 'admin']}>
+                <AIAssessment />
               </ProtectedRoute>
             } 
           />

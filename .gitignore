@@ -36,3 +36,5 @@ lerna-debug.log*
 # OS Files
 .DS_Store
 Thumbs.db
+DEVELOPERS_GUIDE.md
+IEEE_PROJECT_Report.md

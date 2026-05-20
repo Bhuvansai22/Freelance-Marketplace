@@ -36,6 +36,18 @@ const userSchema = new mongoose.Schema(
       type: [String],
       default: [],
     },
+    isVerified: {
+      type: Boolean,
+      default: false,
+    },
+    showBadges: {
+      type: Boolean,
+      default: true,
+    },
+    visibleBadges: {
+      type: [String],
+      default: ['javascript', 'react', 'html-css'],
+    },
     title: {
       type: String,
     },
@@ -53,6 +65,38 @@ const userSchema = new mongoose.Schema(
     },
     resume: {
       type: String,
+    },
+    resumeAnalysis: {
+      score: {
+        type: Number,
+      },
+      hiringReadiness: {
+        type: String,
+        enum: ['Beginner', 'Intermediate', 'Expert'],
+      },
+      missingSkills: {
+        type: [String],
+        default: [],
+      },
+      improvements: {
+        type: [String],
+        default: [],
+      },
+      portfolioSuggestions: {
+        type: [String],
+        default: [],
+      },
+      profileLinkSuggestions: {
+        type: [String],
+        default: [],
+      },
+      recommendedSkills: {
+        type: [String],
+        default: [],
+      },
+      analyzedAt: {
+        type: Date,
+      }
     },
     profileType: {
       type: String,

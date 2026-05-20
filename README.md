@@ -1,260 +1,128 @@
-# Freelancer Marketplace with Bidding System
+# 🚀 Hirenova — Skill-Verified, Mobile-First Freelance Marketplace
 
-A full-stack MERN-based freelance marketplace platform designed to empower freshers and skilled freelancers by providing free bidding, skill verification, real-time communication, milestone tracking, and secure online payments.
-
----
-
-# 🚀 Vision of the Platform
-
-Unlike traditional freelance platforms that prioritize experienced freelancers, this platform focuses on helping freshers and beginners gain real-world opportunities through skill-based verification and equal bidding visibility.
+Hirenova is a MERN-stack freelance platform specifically designed to empower students and freshers. By offering unlimited free bidding and automated technical assessments, Hirenova shifts the hiring focus from *experience-based reviews* to *proven technical competency*.
 
 ---
 
-# 🌟 Unique Selling Point (USP)
+## 🌟 Key Pillars & Unique Selling Points (USPs)
 
-✅ Free bidding system  
-✅ Fresher-first hiring ecosystem  
-✅ Free skill verification assessments  
-✅ Real-time chat messaging  
-✅ AI-powered future enhancements  
-✅ Milestone-based project workflow  
-
----
-
-# 🚀 Features
-
-# 🔐 Authentication & Authorization
-- JWT-based authentication
-- Secure login and registration
-- Password encryption using bcrypt
-- Role-based access control
-- Protected routes
+*   **🏅 Verified Skills badging**: Freelancers attempt randomized evaluations to earn Gold Badges directly displayed on their dashboards and proposals.
+*   **💸 Unlimited Free Bids**: No paid credits or connect costs. Hiring is democratized, letting beginners participate without financial pressure.
+*   **📱 Mobile-First Design**: Responsive screens optimized down to 320px, including an adaptive panel-toggle real-time chat interface.
+*   **🔒 Hardened Production Security**: Armed with express payload protections, secure whitelist-based CORS controls, and uptime monitors.
+*   **✨ Vibrant Modern UI**: Clean backdrop-blur glassmorphism cards, customized animations, and sleek dark modes.
 
 ---
 
-# 👨‍💼 Client Features
-- Post projects
-- View freelancer bids
-- Accept or reject proposals
-- Track milestones
-- Release payments
-- Chat with freelancers
-- Review and rate freelancers
+## 🛠️ Technological Stack
+
+*   **Frontend**: React.js SPA, Vite compiler, Zustand state management, Tailwind CSS framework, Framer Motion animations.
+*   **Backend**: Node.js runtime, Express.js server framework, Socket.io event-based WebSockets, Mongoose ODM.
+*   **Database**: MongoDB non-relational document database.
+*   **Security**: JSON parser bounds, whitelist-restricted CORS, bcrypt password encryptions, JWT access controls.
 
 ---
 
-# 👨‍💻 Freelancer Features
-- Browse available projects
-- Place bids
-- Submit proposals
-- Manage profile and skills
-- Track project progress
-- Real-time communication
-- View earnings and reviews
+## 📊 Core Features
+
+### 👨‍💻 For Freelancers
+1. **Browse Projects**: Advanced search with skill filters, budget scopes, and recommendations.
+2. **Skills Verification Center**: Take interactive JavaScript, React, and HTML/CSS assessments to claim gold badges.
+3. **Bidding Engine**: Submit proposal bids with step-by-step milestones.
+4. **Real-time Chat**: Continuous messaging with clients featuring an adaptive mobile workspace.
+
+### 👨‍💼 For Clients
+1. **Post Projects**: Structured listing form with budget constraints and stage milestones.
+2. **Manage Proposals**: Instantly review bids, see verified badge credentials of candidates, and hire.
+3. **Milestone Control**: Divvy project scope into stages, verify deliverables, and release funds securely.
 
 ---
 
-# 💰 Free Bidding System
-Unlike existing platforms that charge for bidding:
+## 📋 Folder Directory structure
 
-✅ Unlimited free bidding  
-✅ Equal opportunity system  
-✅ Beginner-friendly workflow  
-
-### Benefits
-- Helps freshers participate freely
-- Reduces financial pressure
-- Encourages fair competition
-
----
-
-# 🏅 Skill Verification System
-
-The platform helps freelancers verify their technical skills through free topic-based assessments.
-
-## Features
-- Skill verification badges
-- Topic-based coding tests
-- Verified fresher profiles
-- Technical score visibility
-- Skill-focused hiring system
-
-## Supported Topics
-- Data Structures & Algorithms
-- HTML & CSS
-- JavaScript
-- React.js
-- Node.js
-- DBMS
-- Aptitude
-- Problem Solving
-
-### Purpose
-The system focuses on skill-based hiring instead of experience-only selection, helping freshers gain better opportunities.
+```
+Freelance-Marketplace/
+├── client/                     # React Frontend Single Page Application
+│   ├── src/
+│   │   ├── components/         # Reusable UI widgets (Navbar, etc.)
+│   │   ├── pages/              # Primary route views (Landing, Dashboard, etc.)
+│   │   ├── store/              # Zustand global state (authStore)
+│   │   ├── index.css           # Custom Glassmorphic design styles
+│   │   └── App.jsx             # React router declaration
+│
+├── server/                     # Express.js REST & WebSockets Backend API
+│   ├── controllers/            # Business logic request handlers
+│   ├── models/                 # Mongoose DB schema definitions
+│   ├── routes/                 # Express route definitions
+│   └── index.js                # Server entrypoint and WebSocket setup
+```
 
 ---
 
-# 🏅 Fresher Support System
+## ⚙️ Quick Start Installation
 
-## Fresher-First Hiring Model
-- Verified fresher badges
-- Beginner-friendly projects
-- Equal bid visibility
-- Skill-based recommendations
-- Portfolio-focused hiring
+Follow these steps to run Hirenova locally:
 
-### Goal
-Provide real opportunities for students and beginners.
+### Prerequisites
+- Node.js installed on your machine.
+- MongoDB instance running locally or a MongoDB Atlas URI connection.
 
----
+### 1. Setup the Database & Backend Server
+Navigate to the server directory:
+```bash
+cd server
+```
 
-# 💬 Real-Time Chat
-Built using Socket.io:
-- Instant messaging
-- Live project discussions
-- Real-time updates
+Create a `.env` file inside the `server/` directory and configure the environment variables:
+```env
+PORT=5000
+MONGO_URI=mongodb://localhost:27017/hirenova
+JWT_SECRET=your_super_secret_key_here
+NODE_ENV=development
+```
 
----
+Install dependencies and start the API server:
+```bash
+npm install
+npm start
+```
+*Note: On server boot, 21 technical assessment questions will automatically seed into your database.*
 
-# 💳 Payment System
-Integrated with Razorpay:
-- Secure online payments
-- Milestone-based payments
-- Payment tracking
+### 2. Setup the Client Application
+Open a new terminal window and navigate to the client directory:
+```bash
+cd client
+```
 
----
+Install dependencies:
+```bash
+npm install
+```
 
-# 📌 Milestone Tracking
-- Divide projects into stages
-- Stage-wise approvals
-- Transparent workflow management
+Start the Vite development compiler:
+```bash
+npm run dev -- --host
+```
 
----
-
-# ⭐ Ratings & Reviews
-- Freelancer ratings
-- Client reviews
-- Reputation management system
-
----
-
-# 🤖 AI-Based Future Enhancements
-- AI freelancer recommendations
-- AI proposal ranking
-- Scam detection system
-- Smart project matching
+Access the application in your browser at `http://localhost:5173`.
 
 ---
 
-# 🔍 Smart Search & Filters
-- Search by skills
-- Budget filters
-- Experience filters
-- Rating filters
-- Verified skill filters
+## 🩺 Monitoring & Diagnostics
+Hirenova includes a system health endpoint suitable for Render, AWS, or custom uptime checks:
+- **Endpoint**: `/health`
+- **Response Format**:
+  ```json
+  {
+    "status": "ok",
+    "uptime": "128.45s",
+    "timestamp": "2026-05-19T10:55:00Z"
+  }
+  ```
 
 ---
 
-# 📁 File Upload System
-Users can upload:
-- PDFs
-- Images
-- ZIP files
-- Project documents
-
----
-
-# 🔔 Notification System
-- Real-time notifications
-- Email alerts
-- Bid updates
-- Payment notifications
-
----
-
-# 🛡️ Escrow Payment System (Future Scope)
-- Secure payment holding
-- Fraud prevention
-- Payment release after approval
-
----
-
-# 📊 Analytics Dashboard
-Track:
-- Earnings
-- Completed projects
-- Bid success rate
-- Skill assessment performance
-- Client activity
-
----
-
-# 🧑‍💼 Admin Dashboard
-Admin functionalities:
-- User management
-- Scam monitoring
-- Skill assessment management
-- Dispute handling
-- Report management
-
----
-
-# 📂 Database Collections
-
-## Users
-- User profile
-- Skills
-- Ratings
-- Assessment scores
-- Verification badges
-
-## Projects
-- Project details
-- Budget
-- Deadline
-- Status
-
-## Bids
-- Proposal details
-- Bid amount
-- Delivery timeline
-
-## Payments
-- Transaction details
-- Payment status
-
-## Messages
-- Chat messages
-- Sender and receiver data
-
-## Assessments
-- Test topics
-- Scores
-- Skill verification data
-
----
-
-# 🛠️ Tech Stack
-
-## Frontend
-- React.js
-- Tailwind CSS
-- Axios
-
-## Backend
-- Node.js
-- Express.js
-
-## Database
-- MongoDB
-
-## Authentication
-- JWT
-- bcrypt
-
-## Real-Time Communication
-- Socket.io
-
-## Payment Gateway
-- Razorpay
-
+## 📄 Documentation Assets
+For deeper research and code understanding, refer to:
+*   [DEVELOPERS_GUIDE.md](DEVELOPERS_GUIDE.md) — Internal database schemas, API specs, and front-end styling tokens.
+*   [IEEE_Project_Report.md](IEEE_Project_Report.md) — Academic-level methodology, responsive layout design math, performance audits, and system sequence charts.

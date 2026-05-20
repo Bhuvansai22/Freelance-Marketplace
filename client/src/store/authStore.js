@@ -17,7 +17,7 @@ export const api = axios.create({
 // Add a request interceptor to include the auth token
 api.interceptors.request.use(
   (config) => {
-    const user = JSON.parse(localStorage.getItem('user'));
+    const user = JSON.parse(sessionStorage.getItem('user'));
     if (user && user.token) {
       config.headers.Authorization = `Bearer ${user.token}`;
     }
@@ -34,7 +34,7 @@ api.interceptors.response.use(
   (error) => {
     if (error.response && error.response.status === 401) {
       console.warn('Unauthorized or invalid signature detected. Force logging out...');
-      localStorage.removeItem('user');
+      sessionStorage.removeItem('user');
       // If we are not on the login page already, redirect to login
       if (!window.location.pathname.includes('/login')) {
         window.location.href = '/login';
@@ -45,10 +45,20 @@ api.interceptors.response.use(
 );
 
 const useAuthStore = create((set) => ({
-  user: JSON.parse(localStorage.getItem('user')) || null,
+  user: JSON.parse(sessionStorage.getItem('user')) || null,
   isLoading: false,
   error: null,
   hasUnreadMessages: localStorage.getItem('hasUnreadMessages') === 'true',
+
+  setUser: (user) => {
+    if (user) {
+      sessionStorage.setItem('user', JSON.stringify(user));
+    } else {
+      sessionStorage.removeItem('user');
+    }
+    set({ user });
+    return user;
+  },
 
   setHasUnreadMessages: (value) => {
     localStorage.setItem('hasUnreadMessages', value);
@@ -59,8 +69,10 @@ const useAuthStore = create((set) => ({
     set({ isLoading: true, error: null });
     try {
       const response = await api.post('/auth/login', { email, password });
-      localStorage.setItem('user', JSON.stringify(response.data));
-      set({ user: response.data, isLoading: false });
+      const user = response.data;
+      sessionStorage.setItem('user', JSON.stringify(user));
+      set({ user, isLoading: false });
+      return user;
     } catch (error) {
       set({
         error: error.response?.data?.message || 'Login failed',
@@ -74,8 +86,10 @@ const useAuthStore = create((set) => ({
     set({ isLoading: true, error: null });
     try {
       const response = await api.post('/auth/register', userData);
-      localStorage.setItem('user', JSON.stringify(response.data));
-      set({ user: response.data, isLoading: false });
+      const user = response.data;
+      sessionStorage.setItem('user', JSON.stringify(user));
+      set({ user, isLoading: false });
+      return user;
     } catch (error) {
       set({
         error: error.response?.data?.message || 'Registration failed',
@@ -86,7 +100,7 @@ const useAuthStore = create((set) => ({
   },
 
   logout: () => {
-    localStorage.removeItem('user');
+    sessionStorage.removeItem('user');
     set({ user: null });
   },
 

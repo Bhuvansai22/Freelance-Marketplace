@@ -112,7 +112,7 @@ exports.updateProfile = async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    const { name, email, phnumber, dob, resume, skills, title, bio, hourlyRate, profileType } = req.body;
+    const { name, email, phnumber, dob, resume, skills, title, bio, hourlyRate, profileType, showBadges, visibleBadges } = req.body;
 
     if (name) user.name = name;
     if (email) user.email = email;
@@ -120,6 +120,8 @@ exports.updateProfile = async (req, res) => {
     if (dob !== undefined) user.dob = dob;
     if (resume !== undefined) user.resume = resume;
     if (profileType !== undefined) user.profileType = profileType;
+    if (showBadges !== undefined) user.showBadges = showBadges;
+    if (visibleBadges !== undefined) user.visibleBadges = visibleBadges;
     
     // Skills formatting support (string or array mapping)
     if (skills !== undefined) {
@@ -149,6 +151,8 @@ exports.updateProfile = async (req, res) => {
       hourlyRate: updatedUser.hourlyRate,
       profileType: updatedUser.profileType,
       verifiedBadges: updatedUser.verifiedBadges,
+      showBadges: updatedUser.showBadges,
+      visibleBadges: updatedUser.visibleBadges,
       rating: updatedUser.rating,
       reviewsCount: updatedUser.reviewsCount,
     });

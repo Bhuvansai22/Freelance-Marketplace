@@ -4,6 +4,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { io } from 'socket.io-client';
 import Navbar from '../components/Navbar';
 import useAuthStore, { api } from '../store/authStore';
+import AIChatbotWidget from '../components/AIChatbotWidget';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Briefcase,
@@ -27,7 +28,8 @@ import {
   Phone,
   FileText,
   Sparkles,
-  Bot
+  Bot,
+  ShieldCheck
 } from 'lucide-react';
 import { Send } from 'lucide-react';
 
@@ -122,6 +124,21 @@ const FreelancerDashboard = () => {
   // Profile & Tab navigation states
   const [activeTab, setActiveTab] = useState('browse'); // 'browse', 'profile', 'assessment'
 
+  const handleChatbotProjectClick = async (projectId) => {
+    try {
+      const response = await api.get(`/projects/${projectId}`);
+      setSelectedProject(response.data);
+    } catch (error) {
+      const found = projects.find(p => p._id === projectId);
+      if (found) {
+        setSelectedProject(found);
+      } else {
+        toast.error('Unable to open project details.');
+      }
+    }
+  };
+
+
   useEffect(() => {
     if (tabParam) {
       setActiveTab(tabParam);
@@ -140,6 +157,9 @@ const FreelancerDashboard = () => {
     bio: '',
     hourlyRate: '',
     verifiedBadges: [],
+    showBadges: true,
+    visibleBadges: [],
+    isVerified: false,
   });
   const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
   const [profileSuccess, setProfileSuccess] = useState(false);
@@ -198,6 +218,9 @@ const FreelancerDashboard = () => {
         bio: u.bio || '',
         hourlyRate: u.hourlyRate || '',
         verifiedBadges: u.verifiedBadges || [],
+        showBadges: u.showBadges !== undefined ? u.showBadges : true,
+        visibleBadges: u.visibleBadges || [],
+        isVerified: u.isVerified || false,
       });
     } catch (err) {
       console.error('Failed to load user profile details', err);
@@ -222,10 +245,9 @@ const FreelancerDashboard = () => {
       };
       const response = await api.put('/auth/profile', payload);
 
-      const currentUser = JSON.parse(localStorage.getItem('user'));
+      const currentUser = useAuthStore.getState().user;
       if (currentUser) {
-        const newUserObj = { ...currentUser, ...response.data };
-        localStorage.setItem('user', JSON.stringify(newUserObj));
+        useAuthStore.getState().setUser({ ...currentUser, ...response.data });
       }
 
       setProfileSuccess(true);
@@ -233,6 +255,31 @@ const FreelancerDashboard = () => {
       setTimeout(() => setProfileSuccess(false), 3000);
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to update profile');
+    } finally {
+      setIsUpdatingProfile(false);
+    }
+  };
+
+  const handleSaveBadgeSettings = async (e) => {
+    e.preventDefault();
+    setIsUpdatingProfile(true);
+    setProfileSuccess(false);
+    try {
+      const payload = {
+        showBadges: profileData.showBadges,
+        visibleBadges: profileData.visibleBadges,
+      };
+      const response = await api.put('/auth/profile', payload);
+      const currentUser = useAuthStore.getState().user;
+      if (currentUser) {
+        useAuthStore.getState().setUser({ ...currentUser, ...response.data });
+      }
+      setProfileSuccess(true);
+      fetchProfile();
+      toast.success('Badge visibility settings saved!');
+      setTimeout(() => setProfileSuccess(false), 3000);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to update badge settings');
     } finally {
       setIsUpdatingProfile(false);
     }
@@ -462,7 +509,7 @@ const FreelancerDashboard = () => {
           {[
             { id: 'browse', name: 'Browse', fullName: 'Browse Projects', icon: Briefcase },
             { id: 'profile', name: 'Profile', fullName: 'My Profile & CV', icon: User },
-            { id: 'assessment', name: 'Skills', fullName: 'Skills Verification', icon: Award },
+            { id: 'badges', name: 'Badges', fullName: 'My Badges', icon: Award },
           ].map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -744,6 +791,47 @@ const FreelancerDashboard = () => {
                 <p className="text-xs text-slate-400 mt-0.5">Keep your professional profile updated to receive higher bid acceptance rates from clients.</p>
               </div>
 
+              {profileData.isVerified ? (
+                <div className="p-4 bg-blue-500/10 border border-blue-500/20 rounded-2xl flex items-center justify-between gap-4 animate-fade-in">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 bg-blue-500/20 rounded-xl text-blue-600 dark:text-blue-400 shrink-0">
+                      <ShieldCheck className="w-5 h-5 text-blue-500 dark:text-blue-400" />
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-xs text-slate-900 dark:text-white flex items-center gap-1.5">
+                        Globally Verified Expert Account
+                      </h4>
+                      <p className="text-[10px] text-slate-400 mt-0.5 leading-relaxed">
+                        Your identity and technical skills have been successfully evaluated. A verified badge is active next to your profile name.
+                      </p>
+                    </div>
+                  </div>
+                  <span className="px-2.5 py-1 bg-blue-500 text-white rounded-lg text-[9px] font-black tracking-wider uppercase shrink-0">ACTIVE</span>
+                </div>
+              ) : (
+                <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl flex items-center justify-between gap-4 animate-fade-in">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 bg-amber-500/20 rounded-xl text-amber-500 shrink-0">
+                      <Award className="w-5 h-5 animate-pulse" />
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-xs text-slate-900 dark:text-white">
+                        Unlock Technical Verification Badge
+                      </h4>
+                      <p className="text-[10px] text-slate-400 mt-0.5 leading-relaxed">
+                        Take a 15-question AI-synthesized skill assessment based on your resume to earn a premium gold skill badge.
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('assessment')}
+                    className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold rounded-lg text-[10px] tracking-wider uppercase transition shadow-sm shrink-0"
+                  >
+                    Verify Now
+                  </button>
+                </div>
+              )}
               {profileSuccess && (
                 <div className="p-3 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 text-xs font-semibold rounded-xl border border-emerald-500/20 flex items-center gap-2">
                   <CheckCircle className="w-4 h-4 shrink-0" /> Profile updated successfully! Changes are synchronized.
@@ -901,8 +989,13 @@ const FreelancerDashboard = () => {
                       )}
                     </div>
                     <div>
-                      <h4 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-1 leading-snug">
+                      <h4 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-1.5 leading-snug">
                         {profileData.name || 'Your Name'}
+                        {profileData.isVerified && (
+                          <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-blue-500/10 text-blue-650 dark:text-blue-400 rounded-full text-[9px] font-bold border border-blue-500/20 shadow-sm shrink-0">
+                            <ShieldCheck className="w-3 h-3 text-blue-550 dark:text-blue-400 shrink-0" /> Verified
+                          </span>
+                        )}
                         {profileData.verifiedBadges?.length > 0 && (
                           <Award className="w-4 h-4 text-amber-500 fill-current animate-pulse" title="Verified Expert" />
                         )}
@@ -969,61 +1062,189 @@ const FreelancerDashboard = () => {
           </div>
         )}
 
-        {activeTab === 'assessment' && (
-          <div className="glass-card p-8 rounded-3xl space-y-6">
-            <div className="flex justify-between items-center pb-4 border-b border-slate-100 dark:border-slate-800">
+        {(activeTab === 'badges' || activeTab === 'assessment') && (
+          <div className="glass-card p-6 sm:p-8 rounded-3xl space-y-6 sm:space-y-8 animate-fade-in">
+            {/* Tab Header */}
+            <div className="pb-4 border-b border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div>
                 <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                  <Award className="text-primary w-5 h-5 animate-bounce" /> Technical Skills Verification Center
+                  <Award className="text-primary w-5 h-5 animate-pulse" /> My Verified Badges Settings
                 </h2>
-                <p className="text-xs text-slate-400 mt-0.5">Test your concepts in JavaScript, React, or HTML/CSS. Score 70% or more to instantly earn the badge!</p>
+                <p className="text-xs text-slate-400 mt-0.5">Control which of your earned skill credentials are publicly shown to clients.</p>
               </div>
               <Link
-                to="/skills-assessment"
-                className="px-4 py-2 bg-primary hover:bg-primary-dark text-white rounded-xl text-xs font-bold transition shadow-md shadow-primary/20"
+                to="/ai-assessment"
+                className="px-4 py-2 bg-gradient-to-r from-primary to-indigo-600 hover:from-primary-dark hover:to-indigo-700 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-primary/20 flex items-center gap-1.5 self-start"
               >
-                Open Verification Room
+                <Sparkles className="w-3.5 h-3.5" /> Earn More Badges
               </Link>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {[
-                { id: 'javascript', name: 'JavaScript Core', desc: 'Variables, closures, asynchronous loops, callbacks, OOP principles and ES6+ standards.', badge: 'JS Verified ⚡', key: 'javascript' },
-                { id: 'react', name: 'React.js Fundamentals', desc: 'Virtual DOM, component hooks, lifecycle events, state structures and state optimization.', badge: 'React Dev 🚀', key: 'react' },
-                { id: 'html-css', name: 'HTML & CSS Design', desc: 'Semantic layout tags, advanced layout selectors, Flexbox, responsive grid systems.', badge: 'Web Stylist 🎨', key: 'html-css' },
-              ].map((topic) => {
-                const hasBadge = profileData.verifiedBadges?.includes(topic.key);
-                return (
-                  <div key={topic.id} className="bg-slate-50 dark:bg-slate-900/40 p-6 rounded-2xl border border-slate-200/50 dark:border-slate-800 flex flex-col justify-between space-y-4">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+              {/* Settings Controls Form */}
+              <form onSubmit={handleSaveBadgeSettings} className="lg:col-span-7 space-y-6 sm:space-y-8">
+                {/* Global Badges Display Option */}
+                <div className="p-5 bg-slate-50 dark:bg-slate-900/40 border border-slate-200/50 dark:border-slate-800 rounded-2xl space-y-4">
+                  <div className="flex items-center justify-between gap-4">
                     <div>
-                      <h3 className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
-                        {topic.name}
-                        {hasBadge && <CheckCircle className="w-4 h-4 text-emerald-500 shrink-0" />}
-                      </h3>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed mt-2">{topic.desc}</p>
+                      <h3 className="font-bold text-slate-900 dark:text-white text-sm">Show Badges Publicly</h3>
+                      <p className="text-[11px] text-slate-400 leading-relaxed mt-0.5">If toggled off, all your earned badges will be completely hidden from clients.</p>
                     </div>
-
-                    <div className="pt-2 space-y-3">
-                      <div className="flex justify-between items-center text-xs font-bold border-t border-slate-200/30 dark:border-slate-800 pt-3">
-                        <span className="text-slate-400">Verifications Badge:</span>
-                        <span className={`px-2 py-0.5 rounded ${hasBadge ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'}`}>
-                          {hasBadge ? topic.badge : 'Not Earned'}
-                        </span>
-                      </div>
-
-                      <Link
-                        to="/skills-assessment"
-                        className={`w-full py-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 ${hasBadge
-                            ? 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 cursor-not-allowed pointer-events-none'
-                            : 'bg-primary hover:bg-primary-dark text-white'
-                          }`}
-                      >
-                        {hasBadge ? 'Already Verified' : 'Start Verification Assessment'}
-                      </Link>
-                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setProfileData({ ...profileData, showBadges: !profileData.showBadges })}
+                      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${profileData.showBadges ? 'bg-primary' : 'bg-slate-350 dark:bg-slate-800'}`}
+                    >
+                      <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${profileData.showBadges ? 'translate-x-5' : 'translate-x-0'}`} />
+                    </button>
                   </div>
-                );
-              })}
+                </div>
+
+                {/* Individual Badges Select List */}
+                <div className="space-y-4">
+                  <h3 className="font-bold text-xs text-slate-400 uppercase tracking-wider">Select Badges to Display</h3>
+                  {profileData.verifiedBadges?.length === 0 ? (
+                    <div className="p-6 bg-slate-100/50 dark:bg-slate-900/20 border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl text-center space-y-2">
+                      <Award className="w-10 h-10 text-slate-300 dark:text-slate-700 mx-auto" />
+                      <p className="text-xs text-slate-500 dark:text-slate-400 leading-normal max-w-xs mx-auto">You haven't earned any verified skill badges yet. Complete a resume-based skill assessment to earn your first credential!</p>
+                      <Link to="/ai-assessment" className="inline-block text-xs font-bold text-primary hover:underline">Launch Assessment Sequence</Link>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {profileData.verifiedBadges.map((badge) => {
+                        const badgeInfo = {
+                          'javascript': { name: 'JavaScript Core', desc: 'JS Verified ⚡', color: 'border-amber-500/20 bg-amber-500/5 text-amber-600' },
+                          'react': { name: 'React.js Fundamentals', desc: 'React Dev 🚀', color: 'border-indigo-500/20 bg-indigo-500/5 text-indigo-600' },
+                          'html-css': { name: 'HTML & CSS Design', desc: 'Web Stylist 🎨', color: 'border-emerald-500/20 bg-emerald-500/5 text-emerald-600' },
+                          'node.js': { name: 'Node.js Backend', desc: 'Node.js Expert 🟢', color: 'border-emerald-600/20 bg-emerald-600/5 text-emerald-600' },
+                          'mongodb': { name: 'MongoDB Database', desc: 'MongoDB Master 🍃', color: 'border-green-500/20 bg-green-500/5 text-green-600' },
+                          'next.js': { name: 'Next.js Framework', desc: 'Next.js Dev ⚡', color: 'border-sky-500/20 bg-sky-500/5 text-sky-600' },
+                          'redux toolkit': { name: 'Redux State Management', desc: 'Redux Guru 💜', color: 'border-purple-500/20 bg-purple-500/5 text-purple-650' }
+                        };
+                        const normalized = badge.toLowerCase().trim();
+                        const info = badgeInfo[normalized] || {
+                          name: `${badge.charAt(0).toUpperCase() + badge.slice(1)} Technical Certification`,
+                          desc: `${badge.charAt(0).toUpperCase() + badge.slice(1)} Verified 💎`,
+                          color: 'border-blue-500/20 bg-blue-500/5 text-blue-600'
+                        };
+                        
+                        const isSelected = profileData.visibleBadges.some(vb => vb.toLowerCase().trim() === normalized);
+                        return (
+                          <div
+                            key={badge}
+                            onClick={() => {
+                              if (!profileData.showBadges) return;
+                              const updatedVisible = isSelected
+                                ? profileData.visibleBadges.filter(b => b.toLowerCase().trim() !== normalized)
+                                : [...profileData.visibleBadges, normalized];
+                              setProfileData({ ...profileData, visibleBadges: updatedVisible });
+                            }}
+                            className={`p-4 rounded-2xl border transition duration-200 cursor-pointer flex items-center justify-between gap-3 ${info.color} ${!profileData.showBadges ? 'opacity-40 cursor-not-allowed' : 'hover:scale-[1.01] hover:shadow-sm'} ${isSelected ? 'border-primary/40 ring-1 ring-primary/30' : 'border-slate-200 dark:border-slate-800'}`}
+                          >
+                            <div className="space-y-1">
+                              <h4 className="font-bold text-xs text-slate-900 dark:text-white leading-none">{info.name}</h4>
+                              <p className="text-[10px] text-primary/70 font-semibold">{info.desc}</p>
+                            </div>
+                            <input
+                              type="checkbox"
+                              checked={isSelected && profileData.showBadges}
+                              disabled={!profileData.showBadges}
+                              onChange={() => {}}
+                              className="rounded border-slate-300 text-primary focus:ring-primary w-4 h-4 cursor-pointer"
+                            />
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* Submit Trigger */}
+                <button
+                  type="submit"
+                  disabled={isUpdatingProfile}
+                  className="w-full sm:w-auto px-6 py-2.5 bg-primary hover:bg-primary-dark text-white rounded-xl text-xs font-bold transition shadow-md shadow-primary/20 flex items-center justify-center gap-1.5"
+                >
+                  {isUpdatingProfile ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Save Display Settings'}
+                </button>
+              </form>
+
+              {/* Dynamic preview mock card */}
+              <div className="lg:col-span-5 space-y-4">
+                <h3 className="font-bold text-xs text-slate-400 uppercase tracking-wider">Client-Side Search Preview</h3>
+                <div className="relative p-6 rounded-3xl border-t-[5px] border-t-primary bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl overflow-hidden space-y-4 max-w-sm mx-auto">
+                  {/* Header: Avatar & Hourly Rate */}
+                  <div className="flex justify-between items-start gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-lg relative">
+                        {profileData.name ? profileData.name.charAt(0).toUpperCase() : 'Y'}
+                        {profileData.showBadges && profileData.visibleBadges.length > 0 && (
+                          <span className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-emerald-500 border-2 border-white dark:border-slate-900 rounded-full" title="Verified Expert"></span>
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <h4 className="font-bold text-slate-900 dark:text-white truncate flex items-center gap-1.5 leading-snug">
+                          {profileData.name || 'Your Name'}
+                          {profileData.isVerified && (
+                            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-blue-500/10 text-blue-650 dark:text-blue-400 rounded-full text-[9px] font-bold border border-blue-500/20 shadow-sm shrink-0">
+                              <ShieldCheck className="w-3 h-3 text-blue-550 dark:text-blue-400 shrink-0" /> Verified
+                            </span>
+                          )}
+                          {profileData.showBadges && profileData.visibleBadges.length > 0 && (
+                            <Award className="w-4 h-4 text-amber-500 fill-current animate-pulse" title="Verified Expert" />
+                          )}
+                        </h4>
+                        <p className="text-[10px] text-slate-400 truncate mt-0.5">{profileData.title || 'Professional Freelancer Specialist'}</p>
+                      </div>
+                    </div>
+                    <span className="px-2 py-0.5 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 rounded-lg text-[10px] font-bold">
+                      ₹{profileData.hourlyRate || '45'}/hr
+                    </span>
+                  </div>
+
+                  {/* Bio Paragraph */}
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed line-clamp-2 h-7">
+                    {profileData.bio || 'Experienced developer with solid background building state-of-the-art web systems.'}
+                  </p>
+
+                  {/* Earned Badges Row */}
+                  {profileData.showBadges && profileData.visibleBadges.length > 0 ? (
+                    <div className="flex flex-wrap gap-1">
+                      {profileData.visibleBadges.map((badge) => {
+                        const badgeLabels = {
+                          'javascript': 'JS Verified ⚡',
+                          'react': 'React Dev 🚀',
+                          'html-css': 'Web Stylist 🎨',
+                          'node.js': 'Node.js Expert 🟢',
+                          'mongodb': 'MongoDB Master 🍃',
+                          'next.js': 'Next.js Dev ⚡',
+                          'redux toolkit': 'Redux Guru 💜'
+                        };
+                        const normalized = badge.toLowerCase().trim();
+                        const displayLabel = badgeLabels[normalized] || `${badge.charAt(0).toUpperCase() + badge.slice(1)} Verified 💎`;
+                        return (
+                          <span key={badge} className="px-2 py-0.5 bg-amber-500/10 text-amber-600 dark:text-amber-400 rounded-full text-[9px] font-bold border border-amber-500/20 shadow-sm animate-fade-in">
+                            {displayLabel}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="py-1 text-center border border-dashed border-slate-200 dark:border-slate-800 rounded-lg text-[9px] text-slate-400">
+                      No credentials visible publicly
+                    </div>
+                  )}
+
+                  {/* Skills tags */}
+                  <div className="flex flex-wrap gap-1 border-t border-slate-100 dark:border-slate-800 pt-3">
+                    {(profileData.skills ? profileData.skills.split(',') : ['Javascript', 'React']).map((skill) => (
+                      <span key={skill} className="px-2 py-0.5 bg-slate-50 dark:bg-slate-800 text-slate-500 rounded text-[9px] font-semibold uppercase tracking-wider">
+                        {skill.trim()}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         )}
@@ -1054,34 +1275,60 @@ const FreelancerDashboard = () => {
                 </div>
               </div>
 
-              {/* Smart AI Skill Match inside Modal */}
-              <div className="mb-4 p-3.5 rounded-xl bg-gradient-to-br from-indigo-500/10 via-purple-500/5 to-transparent border border-indigo-500/20 shadow-sm relative overflow-hidden">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="space-y-1">
-                    <h4 className="font-extrabold text-xs text-slate-900 dark:text-white flex items-center gap-1.5">
-                      <Bot className="w-3.5 h-3.5 text-primary animate-pulse" />
-                      Smart AI Skill Match
-                    </h4>
-                    {isCheckingMatch ? (
-                      <p className="text-[10px] text-slate-400">Recalculating matching insights...</p>
-                    ) : aiMatch ? (
-                      <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-normal pr-4">
-                        {aiMatch.explanation}
-                      </p>
-                    ) : (
-                      <p className="text-[10px] text-slate-400">Complete your profile skills to generate matching scores.</p>
-                    )}
+              {!(profileData.name && profileData.email && profileData.phnumber && profileData.skills && profileData.title && profileData.bio && profileData.hourlyRate) ? (
+                <div className="space-y-5 text-center py-6">
+                  <div className="w-14 h-14 bg-red-500/10 text-red-500 rounded-full flex items-center justify-center mx-auto shadow-inner">
+                    <User className="w-6 h-6 animate-pulse" />
                   </div>
-                  {!isCheckingMatch && aiMatch && (
-                    <div className="text-center bg-indigo-500/15 border border-indigo-500/30 px-2.5 py-1.5 rounded-xl">
-                      <span className="font-extrabold text-lg text-primary dark:text-indigo-400">{aiMatch.matchPercentage}%</span>
-                      <p className="text-[8px] font-bold text-slate-500 uppercase mt-0.5 whitespace-nowrap">Match Score</p>
-                    </div>
-                  )}
+                  <div className="space-y-2">
+                    <h4 className="font-bold text-sm text-slate-900 dark:text-white flex items-center justify-center gap-1.5">
+                      <AlertTriangle className="w-4 h-4 text-red-500 shrink-0" />
+                      Profile Incomplete!
+                    </h4>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed max-w-sm mx-auto">
+                      Before placing a proposal on this project, you must complete your developer profile details. Please fill in your **Name**, **Email**, **Phone Number**, **Skills**, **Title**, **Bio**, and **Hourly Rate**.
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setSelectedProject(null);
+                      setActiveTab('profile');
+                    }}
+                    className="py-2.5 px-5 bg-primary hover:bg-primary-dark text-white rounded-xl text-xs font-bold transition shadow-md shadow-primary/20 hover:scale-[1.01]"
+                  >
+                    Go to My Profile Tab
+                  </button>
                 </div>
-              </div>
+              ) : (
+                <>
+                  {/* Smart AI Skill Match inside Modal */}
+                  <div className="mb-4 p-3.5 rounded-xl bg-gradient-to-br from-indigo-500/10 via-purple-500/5 to-transparent border border-indigo-500/20 shadow-sm relative overflow-hidden">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="space-y-1">
+                        <h4 className="font-extrabold text-xs text-slate-900 dark:text-white flex items-center gap-1.5">
+                          <Bot className="w-3.5 h-3.5 text-primary animate-pulse" />
+                          Smart AI Skill Match
+                        </h4>
+                        {isCheckingMatch ? (
+                          <p className="text-[10px] text-slate-400">Recalculating matching insights...</p>
+                        ) : aiMatch ? (
+                          <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-normal pr-4">
+                            {aiMatch.explanation}
+                          </p>
+                        ) : (
+                          <p className="text-[10px] text-slate-400">Complete your profile skills to generate matching scores.</p>
+                        )}
+                      </div>
+                      {!isCheckingMatch && aiMatch && (
+                        <div className="text-center bg-indigo-500/15 border border-indigo-500/30 px-2.5 py-1.5 rounded-xl">
+                          <span className="font-extrabold text-lg text-primary dark:text-indigo-400">{aiMatch.matchPercentage}%</span>
+                          <p className="text-[8px] font-bold text-slate-500 uppercase mt-0.5 whitespace-nowrap">Match Score</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
 
-              <form onSubmit={handlePlaceBid} className="space-y-4">
+                  <form onSubmit={handlePlaceBid} className="space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Bid Amount (₹)</label>
@@ -1147,6 +1394,8 @@ const FreelancerDashboard = () => {
                   </button>
                 </div>
               </form>
+            </>
+          )}
             </motion.div>
           </div>
         )}
@@ -1280,6 +1529,12 @@ const FreelancerDashboard = () => {
                                 : 'bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700/60 text-slate-800 dark:text-slate-200 rounded-tl-none'
                               }`}
                           >
+                            {msg.isSuspicious && (
+                              <div className="flex items-center gap-1.5 text-[9px] bg-red-500/10 text-red-600 dark:text-red-400 p-1.5 rounded-lg mb-1.5 border border-red-500/20">
+                                <AlertTriangle className="w-3 h-3 text-red-500 shrink-0" />
+                                <span className="font-bold">Scam Alert</span>
+                              </div>
+                            )}
                             <p className="break-words font-medium">{msg.content}</p>
                             <span className={`text-[8px] block text-right mt-1 font-semibold ${isOwn ? 'text-white/70' : 'text-slate-400'}`}>
                               {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -1430,6 +1685,10 @@ const FreelancerDashboard = () => {
           </div>
         )}
       </AnimatePresence>
+      <AIChatbotWidget 
+        userRole="freelancer" 
+        onProjectClick={handleChatbotProjectClick} 
+      />
     </div>
   );
 };

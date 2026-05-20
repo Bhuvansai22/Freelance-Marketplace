@@ -6,6 +6,25 @@ const Project = require('../models/Project');
 // @access  Private/Freelancer
 exports.placeBid = async (req, res) => {
   try {
+    const User = require('../models/User');
+    const freelancerUser = await User.findById(req.user.id);
+
+    if (
+      !freelancerUser ||
+      !freelancerUser.name ||
+      !freelancerUser.email ||
+      !freelancerUser.phnumber ||
+      !freelancerUser.skills ||
+      freelancerUser.skills.length === 0 ||
+      !freelancerUser.title ||
+      !freelancerUser.bio ||
+      !freelancerUser.hourlyRate
+    ) {
+      return res.status(400).json({
+        message: 'Profile incomplete! Please complete your Name, Email, Phone Number, Skills, Title, Bio, and Hourly Rate in the My Profile tab before placing a bid.'
+      });
+    }
+
     const { project: projectId, amount, deliveryTime, coverLetter } = req.body;
 
     const project = await Project.findById(projectId);
